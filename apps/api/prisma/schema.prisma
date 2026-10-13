@@ -1,0 +1,66 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String @id @default(uuid()) @db.Uuid
+  email     String @unique @db.VarChar(320)
+  firstName String @map("first_name") @db.VarChar(100)
+  lastName  String @map("last_name") @db.VarChar(100)
+  timezone  String @db.VarChar(50)
+
+  credentials       UserCredential?
+  identityProviders IdentityProvider[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("users")
+}
+
+model UserCredential {
+  userId       String @id @map("user_id") @db.Uuid
+  passwordHash String @map("password_hash") @db.Text
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("user_credentials")
+}
+
+model IdentityProvider {
+  id             String               @id @default(uuid()) @db.Uuid
+  userId         String               @map("user_id") @db.Uuid
+  provider       IdentityProviderType
+  providerUserId String?              @map("provider_user_id") @db.VarChar(255)
+  providerEmail  String?              @map("provider_email") @db.VarChar(320)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([provider, providerUserId], map: "uq_identity_provider_user")
+  @@index([userId], map: "idx_identity_providers_user_id")
+  @@map("identity_providers")
+}
+
+enum IdentityProviderType {
+  LOCAL
+  GOOGLE
+  GITHUB
+
+  @@map("identity_provider_type")
+}
