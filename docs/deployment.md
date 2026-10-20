@@ -2,7 +2,7 @@
 
 > **Current production setup (2026-10-20, decision D26):** the API runs on the home server
 > (`homeserver`, Ubuntu 24.04) in Docker, bound to `127.0.0.1:8081`, behind the existing
-> Cloudflare Tunnel that routes `api.pypr.work` there. The web app is on Vercel (`pypr.work`),
+> Cloudflare Tunnel that routes `api.pypr.work` there. The web app is on Vercel (`www.pypr.work`; `pypr.work` redirects there),
 > the database on Supabase. See [Home server](#home-server) below; the rest of this guide
 > describes the general setup.
 
