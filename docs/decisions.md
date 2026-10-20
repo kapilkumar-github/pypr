@@ -383,3 +383,12 @@ density.
   or a shared header that only the Vercel rewrite sends.
 - The old Go backend (`pypr-api.service`, `~/pypr-go`) is retired: it should be disabled; its
   files stay until the owner approves removing them.
+
+## D27. Separate production database (2026-10-21)
+
+Production uses its own Supabase project, `uwrdwxmlyylkfdboxsuw` (the database the old Go backend
+used); development and tests keep `aahaqtbsshzmgukfrnig` and local Docker. Before going live the
+production project's `public` schema was emptied (the old app's 13 tables, its goose history and
+all types/functions; no backup, at the owner's request; Supabase's own schemas untouched) and
+the 4 Prisma migrations were applied with `prisma migrate deploy`, with no drift afterwards.
+The old Go instance (`~/pypr-go`) was deleted; its systemd unit still needs `sudo` to remove.
