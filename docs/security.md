@@ -123,12 +123,15 @@ failure in the dark theme.
 
 ## Open items
 
-| Priority | Item                                                                                       |
-| -------- | ------------------------------------------------------------------------------------------ |
-| High     | Verify Supabase's certificate: add its CA and use `sslmode=verify-full` (D11)              |
-| Medium   | Move rate-limit counters to a shared store before running more than one API instance (D12) |
-| Medium   | Per-account lockout or slow-down after repeated failed logins                              |
-| Medium   | Scheduled cleanup of expired refresh tokens, used verification tokens and revoked sessions |
-| Low      | CSP nonces in the web app to drop `'unsafe-inline'` for scripts                            |
-| Low      | Password reset flow (the `user_tokens` table is ready for it)                              |
-| Low      | Session list with "sign out other devices"                                                 |
+| Priority | Item                                                                                                 |
+| -------- | ---------------------------------------------------------------------------------------------------- |
+| High     | Verify Supabase's certificate: add its CA and use `sslmode=verify-full` (D11)                        |
+| High     | Cloudflare: turn on "Always Use HTTPS" for pypr.work (plain HTTP to the API answers today)           |
+| Medium   | Per-IP rate limits can be dodged by calling api.pypr.work directly with a fake X-Forwarded-For (D26) |
+| Medium   | Connect as a dedicated least-privilege database role instead of `postgres`                           |
+| Medium   | Move rate-limit counters to a shared store before running more than one API instance (D12)           |
+| Medium   | Per-account lockout or slow-down after repeated failed logins                                        |
+| Medium   | Scheduled cleanup of expired refresh tokens, used verification tokens and revoked sessions           |
+| Low      | CSP nonces in the web app to drop `'unsafe-inline'` for scripts                                      |
+| Low      | Password reset flow (the `user_tokens` table is ready for it)                                        |
+| Low      | Session list with "sign out other devices"                                                           |
