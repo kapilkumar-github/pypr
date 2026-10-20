@@ -15,7 +15,7 @@ services:
     env_file: ./api.env
     environment:
       HOME: /tmp # Chromium writes its profile under HOME; the image filesystem is read-only
-    init: true
+    # No `init: true`: snap Docker can't run its init helper; the image uses tini instead.
     read_only: true
     tmpfs:
       - /tmp:size=512m

@@ -20,7 +20,7 @@ COPY --from=build /out ./
 # Chromium headless shell, its system libraries and fonts (Liberation is metric-compatible
 # with Helvetica/Arial used by the templates).
 RUN npx --no-install playwright-core install --with-deps --only-shell chromium \
- && apt-get install -y --no-install-recommends fonts-liberation \
+ && apt-get install -y --no-install-recommends fonts-liberation tini \
  && rm -rf /var/lib/apt/lists/* \
  && useradd --system --uid 10001 --home /app pypr \
  && chown -R pypr /app
@@ -28,4 +28,6 @@ USER pypr
 EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+process.env.PORT+'/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+# tini as PID 1 forwards signals (graceful shutdown) and reaps Chromium's leftover processes.
+ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["node", "dist/main.js"]
