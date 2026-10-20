@@ -10,11 +10,9 @@ const parsed = {
     email: 'jordan@example.com',
     phone: null,
     location: 'Berlin',
-    website: null,
-    linkedin: null,
-    github: null,
     summary: 'Engineer who likes simple systems.',
   },
+  links: [{ label: 'Portfolio', url: 'jordan.design' }],
   section_titles: {
     experience: 'Experience',
     education: null,

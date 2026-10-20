@@ -37,6 +37,31 @@ function Entry({ entry, compact }: { entry: EntryView; compact: boolean }) {
 }
 
 function Section({ section }: { section: SectionView }) {
+  if (section.type === 'links') {
+    // Label and printed address, so the link still works on paper; clickable in the PDF.
+    return (
+      <section className="section">
+        <h2 className="section-title">{section.title}</h2>
+        <ul className="links">
+          {section.entries.map((e) => {
+            const text = (
+              <>
+                {e.title}
+                {/* A real space, so copied or extracted text (ATS) doesn't merge the two. */}
+                {e.meta && (
+                  <>
+                    {' '}
+                    <span className="link-address">{e.meta}</span>
+                  </>
+                )}
+              </>
+            );
+            return <li key={e.id}>{e.href ? <a href={e.href}>{text}</a> : text}</li>;
+          })}
+        </ul>
+      </section>
+    );
+  }
   if (section.type === 'languages') {
     return (
       <section className="section">
@@ -63,16 +88,19 @@ function Section({ section }: { section: SectionView }) {
 function Classic({ resume }: { resume: ResumeView }) {
   return (
     <div className="resume">
-      <header className="masthead">
-        {resume.name && <h1 className="name">{resume.name}</h1>}
-        {resume.headline && <p className="headline">{resume.headline}</p>}
-        {resume.contacts.length > 0 && (
-          <ul className="contacts">
-            {resume.contacts.map((c) => (
-              <li key={c.kind}>{c.href ? <a href={c.href}>{c.label}</a> : c.label}</li>
-            ))}
-          </ul>
-        )}
+      <header className={resume.photo ? 'masthead masthead-photo' : 'masthead'}>
+        {resume.photo && <img className="photo" src={resume.photo} alt="" />}
+        <div className="masthead-text">
+          {resume.name && <h1 className="name">{resume.name}</h1>}
+          {resume.headline && <p className="headline">{resume.headline}</p>}
+          {resume.contacts.length > 0 && (
+            <ul className="contacts">
+              {resume.contacts.map((c) => (
+                <li key={c.kind}>{c.href ? <a href={c.href}>{c.label}</a> : c.label}</li>
+              ))}
+            </ul>
+          )}
+        </div>
       </header>
       {resume.summary && <RichText text={resume.summary} className="summary" />}
       {resume.sections.map((section) => (

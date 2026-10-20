@@ -22,15 +22,18 @@
   --color-ink-subtle: #8993a3;
   --color-line: #272d37;
 
-  /* Accent: neon lime, used for fills with dark text, and for thin indicators */
-  --color-primary: #b7ff3c;
-  --color-primary-ink: #090b10;
+  /* Accent: the app accent (Settings > Appearance, decision D28), neon lime by default. The
+     --app-* variables are set on <html> from the user's choice, with contrast-safe variants;
+     a resume's own accent never touches these. Used for fills with readable text, and for thin
+     indicators. */
+  --color-primary: var(--app-accent, #b7ff3c);
+  --color-primary-ink: var(--app-accent-ink, #090b10);
   --color-secondary: #191d25;
-  --color-accent: #b7ff3c;
-  --color-accent-ink: #090b10;
+  --color-accent: var(--app-accent, #b7ff3c);
+  --color-accent-ink: var(--app-accent-ink, #090b10);
   /* Focus rings, selected tabs and other thin indicators */
-  --color-highlight: #b7ff3c;
-  --color-glow: rgb(183 255 60 / 22%);
+  --color-highlight: var(--app-highlight-dark, #b7ff3c);
+  --color-glow: var(--app-glow, rgb(183 255 60 / 22%));
   --color-danger: #f87171;
   --color-success: #b7ff3c;
   --color-warning: #fbbf24;
@@ -69,13 +72,13 @@
   --color-line: #e4e4e7;
 
   /* Lime stays a fill with dark text; thin lines use ink, since lime lines vanish on white. */
-  --color-primary: #b7ff3c;
-  --color-primary-ink: #090b10;
+  --color-primary: var(--app-accent, #b7ff3c);
+  --color-primary-ink: var(--app-accent-ink, #090b10);
   --color-secondary: #f4f4f5;
-  --color-accent: #b7ff3c;
-  --color-accent-ink: #090b10;
-  --color-highlight: #0a0a0a;
-  --color-glow: rgb(101 163 13 / 25%);
+  --color-accent: var(--app-accent, #b7ff3c);
+  --color-accent-ink: var(--app-accent-ink, #090b10);
+  --color-highlight: var(--app-highlight-light, #0a0a0a);
+  --color-glow: var(--app-glow-light, rgb(101 163 13 / 25%));
   --color-danger: #dc2626;
   --color-success: #15803d;
   --color-warning: #b45309;
@@ -86,20 +89,6 @@
 
   --shadow-paper: 0 30px 60px oklch(0 0 0 / 14%);
   --shadow-float: 0 16px 32px oklch(0 0 0 / 18%);
-}
-
-/* The resume editor recolors only itself with the resume's own accent (settings.accentColor);
-   --editor-* values are computed in the editor for contrast. */
-.resume-accent-scope {
-  --color-primary: var(--editor-accent);
-  --color-primary-ink: var(--editor-accent-ink);
-  --color-accent: var(--editor-accent);
-  --color-highlight: var(--editor-accent-on-dark);
-  --color-success: var(--editor-accent-on-dark);
-}
-[data-theme='light'] .resume-accent-scope {
-  --color-highlight: var(--editor-accent-on-light);
-  --color-success: var(--editor-accent-on-light);
 }
 
 @layer base {

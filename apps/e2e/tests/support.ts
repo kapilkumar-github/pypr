@@ -64,10 +64,8 @@ export async function signUp(page: Page, email: string): Promise<void> {
   await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
   await page.getByRole('button', { name: 'Create account' }).click();
   await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
+  // Opening the link verifies and goes to the resumes on its own (no button).
   await page.goto(await verificationLink(email));
-  await page.getByRole('button', { name: 'Verify my email' }).click();
-  await expect(page.getByRole('heading', { name: 'Email verified' })).toBeVisible();
-  await page.getByRole('link', { name: 'Go to your resumes' }).click();
   await expect(page.getByRole('heading', { name: 'Your resumes' })).toBeVisible();
 }
 

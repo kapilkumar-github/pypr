@@ -17,15 +17,33 @@ export const RESUME_CONTENT_INCLUDE = {
     orderBy: { position: 'asc' },
     include: { entries: { orderBy: { position: 'asc' } } },
   },
+  // Only whether there is a photo; its bytes are served by GET /api/resumes/:id/photo.
+  photo: { select: { updatedAt: true, width: true, height: true } },
 } satisfies Prisma.ResumeInclude;
 
 export type ResumeWithContent = Prisma.ResumeGetPayload<{ include: typeof RESUME_CONTENT_INCLUDE }>;
 
-export function basicsOf(row: ResumeWithContent['basics']): Basics {
+/**
+ * Basics as stored at `schemaVersion`. Before version 3 they include the legacy website,
+ * LinkedIn and GitHub columns, which the version 3 upgrade moves into a links section.
+ */
+export function basicsOf(
+  row: ResumeWithContent['basics'],
+  schemaVersion: number = RESUME_SCHEMA_VERSION,
+): Basics | (Basics & LegacyLinkColumns) {
   if (!row) return emptyBasics();
-  const { resumeId: _, ...basics } = row;
-  return basics;
+  const { resumeId: _, website, linkedin, github, ...basics } = row;
+  return schemaVersion < 3 ? { ...basics, website, linkedin, github } : basics;
 }
+
+interface LegacyLinkColumns {
+  website: string;
+  linkedin: string;
+  github: string;
+}
+
+/** Saves write blanks to the legacy columns: their values live in the links section now. */
+export const BLANK_LEGACY_LINKS: LegacyLinkColumns = { website: '', linkedin: '', github: '' };
 
 /** Rows -> validated document, upgrading content stored by an older schema version. */
 export function toResumeDocument(row: ResumeWithContent): ResumeDocument {
@@ -40,7 +58,7 @@ export function toResumeDocument(row: ResumeWithContent): ResumeDocument {
         : DEFAULT_RESUME_SETTINGS.font,
       density: row.density,
     },
-    basics: basicsOf(row.basics),
+    basics: basicsOf(row.basics, row.schemaVersion),
     sections: row.sections.map((section) => ({
       id: section.id,
       type: section.type,
@@ -60,6 +78,13 @@ export function toResumeDocument(row: ResumeWithContent): ResumeDocument {
     schemaVersion: RESUME_SCHEMA_VERSION,
     updatedAt: row.updatedAt.toISOString(),
     content,
+    photo: row.photo
+      ? {
+          updatedAt: row.photo.updatedAt.toISOString(),
+          width: row.photo.width,
+          height: row.photo.height,
+        }
+      : null,
   };
 }
 

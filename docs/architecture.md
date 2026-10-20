@@ -42,12 +42,16 @@ Rules:
   by the `db:generate` task, which `apps/api/turbo.json` runs before build, lint, types, tests and dev.
   `DatabaseModule` provides one global `PrismaService`; it connects on first query.
 - Tables: `users` (with `email_verified_at`), `sessions`, `refresh_tokens`, `identity_providers`
-  (see D9), `user_tokens` (emailed one-time tokens, D14).
+  (see D9; `users` also holds `theme_preference` and `app_accent_color`, D28), `user_tokens`
+  (emailed one-time tokens, D14), `resume_photos` (one re-encoded JPEG
+  per resume, D28).
   Snake_case names, UUIDv7 ids, `timestamptz(3)`, named indexes. CHECK constraints that Prisma
   can't express are written by hand in the migration SQL.
 - Resumes (`src/resumes`, milestone 6, D3): list, create (Idempotency-Key header), get, save
   (whole document + revision; 409 `REVISION_CONFLICT` when stale), delete, and
-  `GET /api/resumes/:id/pdf` (milestone 10). Every query is scoped by owner. Saves write only
+  `GET /api/resumes/:id/pdf` (milestone 10), and `PUT/GET/DELETE /api/resumes/:id/photo`
+  (milestone 12, D28; the document reports `photo` metadata, the PDF embeds it inline). Every
+  query is scoped by owner. Saves write only
   changed rows inside one transaction that starts with the conditional revision bump.
 - PDF (`src/integrations/pdf`, D7, D16): `PdfRenderer` port, `PlaywrightPdfRenderer` adapter
   (one shared Chromium, a fresh context per render, JavaScript off, network blocked, concurrency
@@ -90,10 +94,13 @@ Rules:
   `[data-theme='light']` overrides them (D10, D20). Colors and font follow the Vercel-inspired palette (D25).
 - Theme: `src/lib/theme.ts` holds the preference logic and the inline `<head>` script that sets
   `data-theme` before first paint; with no saved choice it follows the OS (D20). The landing and
-  auth navbars have `ThemeToggle` (light/dark); `/settings` has Dark, Light and System. The choice
-  is kept in `localStorage`. Fonts: Poppins (text) and Space Grotesk (logo) via `next/font`.
-- Pages: `/` (landing, from the earlier pypr-ui project), `/settings` (theme, signed in), `/register`,
-  `/login`, `/verify-email` (verifies on click, not on load), `/dashboard` and `/resumes/[id]`.
+  auth navbars have `ThemeToggle` (light/dark); `/settings/appearance` has Dark, Light and System
+  plus the app accent (D28). Both are cached in `localStorage` (the `<head>` script also applies
+  the accent's `--app-*` variables) and saved per account via `/api/me/appearance`;
+  `lib/appearance-sync.ts` reconciles the two after sign-in. Fonts: Geist and Space Grotesk.
+- Pages: `/` (landing, from the earlier pypr-ui project), `/settings` (opens
+  `/settings/appearance`; categories on the left), `/register`, `/login`, `/verify-email`
+  (verifies on load, then goes to the resumes; D28), `/dashboard` and `/resumes/[id]`.
   The three auth pages share `app/(auth)/layout.tsx`: the landing backdrop and a form card.
 - `next.config.ts` validates `API_URL` and rewrites `/api/*` to the API, so the browser sees one
   origin and auth cookies stay same-origin (decision D5).
@@ -158,3 +165,10 @@ either rebuilds the web app. Add every new build-time variable there.
 10. **Done:** server-side PDF export
 11. **Done:** end-to-end tests, security review ([security.md](security.md)), deployment docs
     ([deployment.md](deployment.md))
+12. **Built, awaiting review:** resume profile photo (D28)
+13. **Built, awaiting review:** Websites & Profiles links section, schema version 3 (D28)
+14. **Built, awaiting review:** Add Section as a two-column grid of buttons
+15. **Built, awaiting review:** app appearance separated from resume design: per-account theme
+    and app accent (D28)
+16. **Built, awaiting review:** Settings page with a navigation list and an Appearance panel
+17. **Built, awaiting review:** automatic email verification on page load (D28)

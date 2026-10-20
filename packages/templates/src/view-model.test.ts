@@ -47,7 +47,7 @@ describe('safeHref', () => {
 describe('toResumeView', () => {
   it('drops hidden and empty sections and entries, and trims text', () => {
     let content = createResumeContent({ title: 'CV', template: 'classic' });
-    content = updateBasics(content, { fullName: '  Ada  ', website: 'ada.dev' });
+    content = updateBasics(content, { fullName: '  Ada  ', location: ' London ' });
     const [experience, education] = content.sections.map((s) => s.id) as [string, string];
     content = addEntry(addEntry(content, experience), experience);
     const [shown, hidden] = content.sections[0]?.entries.map((e) => e.id) as [string, string];
@@ -65,9 +65,7 @@ describe('toResumeView', () => {
 
     const view = toResumeView(content);
     expect(view.name).toBe('Ada');
-    expect(view.contacts).toEqual([
-      { kind: 'website', label: 'ada.dev', href: 'https://ada.dev/' },
-    ]);
+    expect(view.contacts).toEqual([{ kind: 'location', label: 'London' }]);
     expect(view.sections.map((s) => s.title)).toEqual(['Work']);
     expect(view.sections[0]?.entries).toHaveLength(1);
     expect(view.sections[0]?.entries[0]).toMatchObject({
@@ -75,5 +73,31 @@ describe('toResumeView', () => {
       dates: 'Jan 2020 – Present',
       bullets: ['Built things'],
     });
+  });
+});
+
+describe('links section', () => {
+  it('uses the label with the printed address, or the address alone, and links safely', () => {
+    let content = addSection(createResumeContent({ title: 'CV', template: 'classic' }), 'links');
+    const links = content.sections.at(-1)?.id ?? '';
+    for (let i = 0; i < 4; i += 1) content = addEntry(content, links);
+    const ids = content.sections.at(-1)?.entries.map((e) => e.id) ?? [];
+    const data = [
+      { label: 'Portfolio', url: 'https://www.ada.dev/' },
+      { label: '', url: 'behance.net/ada' },
+      { label: 'Old blog', url: '' },
+      { label: 'Bad', url: 'javascript:alert(1)' },
+    ];
+    ids.forEach((id, i) => {
+      content = updateEntryData<'links'>(content, links, id, data[i] ?? {});
+    });
+
+    const entries = toResumeView(content).sections.find((s) => s.type === 'links')?.entries;
+    expect(entries?.map(({ title, meta, href }) => ({ title, meta, href }))).toEqual([
+      { title: 'Portfolio', meta: 'ada.dev', href: 'https://www.ada.dev/' },
+      { title: 'behance.net/ada', meta: '', href: 'https://behance.net/ada' },
+      { title: 'Old blog', meta: '', href: undefined },
+      { title: 'Bad', meta: 'javascript:alert(1)', href: undefined },
+    ]);
   });
 });

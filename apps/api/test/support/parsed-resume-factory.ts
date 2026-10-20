@@ -9,11 +9,9 @@ export function emptyParsedResume(overrides: Partial<ParsedResume> = {}): Parsed
       email: null,
       phone: null,
       location: null,
-      website: null,
-      linkedin: null,
-      github: null,
       summary: null,
     },
+    links: [],
     section_titles: {
       experience: null,
       education: null,
@@ -44,9 +42,6 @@ export function sampleParsedResume(): ParsedResume {
       email: 'jordan@example.com',
       phone: null,
       location: 'Berlin',
-      website: null,
-      linkedin: null,
-      github: null,
       summary: null,
     },
     section_titles: {

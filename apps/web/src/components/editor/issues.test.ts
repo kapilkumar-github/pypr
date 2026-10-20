@@ -1,4 +1,10 @@
-import { addEntry, createResumeContent, updateBasics, updateEntryData } from '@pypr/resume-core';
+import {
+  addEntry,
+  addSection,
+  createResumeContent,
+  updateBasics,
+  updateEntryData,
+} from '@pypr/resume-core';
 import { describe, expect, it } from 'vitest';
 import { groupIssues } from './issues';
 
@@ -19,5 +25,18 @@ describe('groupIssues', () => {
     expect(issues.count).toBe(2);
     expect(issues.basics.has('fullName')).toBe(true);
     expect(issues.sections.get(section)?.get(`${entry}.startDate`)).toBeDefined();
+  });
+});
+
+describe('link addresses', () => {
+  it('flag anything that is not a web address on its URL field', () => {
+    let content = addSection(createResumeContent({ title: 'CV', template: 'classic' }), 'links');
+    const links = content.sections.at(-1)?.id ?? '';
+    content = addEntry(content, links);
+    const entry = content.sections.at(-1)?.entries[0]?.id ?? '';
+    content = updateEntryData<'links'>(content, links, entry, { url: 'javascript:alert(1)' });
+    expect(groupIssues(content).sections.get(links)?.get(`${entry}.url`)).toMatch(/web address/);
+    content = updateEntryData<'links'>(content, links, entry, { url: 'ada.dev' });
+    expect(groupIssues(content).count).toBe(0);
   });
 });

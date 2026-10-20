@@ -1,10 +1,11 @@
-import { resumeContentSchema, type ResumeContent } from './schema.js';
+import { DEFAULT_SECTION_TITLES } from './defaults.js';
+import { isWebUrl, resumeContentSchema, type ResumeContent } from './schema.js';
 
 /**
  * Version of the stored resume content shape. Bump it whenever the content shape changes in a
  * way old data doesn't fit, and add an upgrade step from the previous version.
  */
-export const RESUME_SCHEMA_VERSION = 2;
+export const RESUME_SCHEMA_VERSION = 3;
 
 /** Turns content stored at version `n` into version `n + 1`. */
 export type ResumeUpgrade = (content: unknown) => unknown;
@@ -38,9 +39,54 @@ export function mergeDuplicateStandardSections(content: unknown): unknown {
   return { ...content, sections: merged };
 }
 
+const LEGACY_LINKS = [
+  ['website', 'Website'],
+  ['linkedin', 'LinkedIn'],
+  ['github', 'GitHub'],
+] as const;
+
+// Web Crypto is built into browsers and Node 19+ (see operations.ts).
+const webCrypto = (globalThis as unknown as { crypto: { randomUUID: () => string } }).crypto;
+
+/**
+ * Version 2 -> 3: the fixed Website, LinkedIn and GitHub fields became entries of a
+ * "Websites & Profiles" section, placed first so they stay near the contact details. A value
+ * that isn't a web address is kept as the entry's label (with no URL) for the user to fix,
+ * never dropped. Without any of those values nothing is added.
+ */
+export function moveLegacyLinks(
+  content: unknown,
+  newId: () => string = () => webCrypto.randomUUID(),
+): unknown {
+  if (typeof content !== 'object' || content === null) return content;
+  const { basics, sections } = content as { basics?: unknown; sections?: unknown };
+  if (typeof basics !== 'object' || basics === null || !Array.isArray(sections)) return content;
+
+  const { website, linkedin, github, ...rest } = basics as Record<string, unknown>;
+  const legacy: Record<(typeof LEGACY_LINKS)[number][0], unknown> = { website, linkedin, github };
+  const entries: { id: string; visible: boolean; data: { label: string; url: string } }[] = [];
+  for (const [key, label] of LEGACY_LINKS) {
+    const raw = legacy[key];
+    const value = typeof raw === 'string' ? raw.trim() : '';
+    if (!value) continue;
+    const data = isWebUrl(value) ? { label, url: value } : { label: value.slice(0, 120), url: '' };
+    entries.push({ id: newId(), visible: true, data });
+  }
+  if (entries.length === 0) return { ...content, basics: rest };
+  const links = {
+    id: newId(),
+    type: 'links',
+    title: DEFAULT_SECTION_TITLES.links,
+    visible: true,
+    entries,
+  };
+  return { ...content, basics: rest, sections: [links, ...(sections as unknown[])] };
+}
+
 /** Upgrade steps keyed by the version they upgrade from. */
 export const RESUME_UPGRADES: Readonly<Record<number, ResumeUpgrade>> = {
   1: mergeDuplicateStandardSections,
+  2: (content) => moveLegacyLinks(content),
 };
 
 export class ResumeVersionError extends Error {

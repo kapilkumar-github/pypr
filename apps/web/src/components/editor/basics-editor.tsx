@@ -1,7 +1,7 @@
 'use client';
 
 import type { Basics } from '@pypr/resume-core';
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
 import { ChevronDownIcon } from '@/components/icons';
 import { Field } from '@/components/ui/field';
 import { cn } from '@/lib/cn';
@@ -19,9 +19,6 @@ const fields: {
   { key: 'email', label: 'Email', type: 'email', autoComplete: 'email' },
   { key: 'phone', label: 'Phone', type: 'tel', autoComplete: 'tel' },
   { key: 'location', label: 'Location', placeholder: 'City, Country' },
-  { key: 'website', label: 'Website', placeholder: 'https://' },
-  { key: 'linkedin', label: 'LinkedIn', placeholder: 'linkedin.com/in/…' },
-  { key: 'github', label: 'GitHub', placeholder: 'github.com/…' },
 ];
 
 /** Personal details, as an accordion item like the sections (not reorderable: always first). */
@@ -31,12 +28,15 @@ export function BasicsEditor({
   expanded,
   onToggleExpanded,
   onChange,
+  photo,
 }: {
   basics: Basics;
   errors: Map<string, string>;
   expanded: boolean;
   onToggleExpanded: () => void;
   onChange: (patch: Partial<Basics>) => void;
+  /** The photo control, saved separately from these fields. */
+  photo?: ReactNode;
 }) {
   const panelId = useId();
   const open = expanded || errors.size > 0;
@@ -70,6 +70,7 @@ export function BasicsEditor({
         hidden={!open}
         className="grid gap-4 border-t border-line p-4 sm:grid-cols-2"
       >
+        {photo}
         {fields.map((field) => (
           <Field
             key={field.key}

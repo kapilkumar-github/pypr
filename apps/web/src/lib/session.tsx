@@ -4,6 +4,7 @@ import { authResponseSchema, type AuthUser } from '@pypr/validation';
 import { usePathname, useRouter } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { ApiError, apiGet, apiRequest } from './api';
+import { syncAppearance } from './appearance-sync';
 
 interface Session {
   user: AuthUser;
@@ -26,7 +27,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     apiGet('/api/auth/me', authResponseSchema)
       .then(({ user: me }) => {
-        if (!cancelled) setUser(me);
+        if (cancelled) return;
+        setUser(me);
+        // The account's theme and app accent (decision D28); the browser copy painted already.
+        void syncAppearance();
       })
       .catch((error: unknown) => {
         if (cancelled) return;

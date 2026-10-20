@@ -12,10 +12,12 @@ export {
   formatMonth,
   formatRange,
   safeHref,
+  safePhotoSrc,
   toResumeView,
   type ContactItem,
   type EntryView,
   type ResumeView,
+  type ResumeViewOptions,
   type SectionView,
 } from './view-model.js';
 export { contrastRatio, ensureContrast, hexToRgb, isHexColor, readableTextOn } from './color.js';

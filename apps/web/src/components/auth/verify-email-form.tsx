@@ -1,86 +1,173 @@
 'use client';
 
-import { AUTH_ERROR_CODES, emailSchema } from '@pypr/validation';
+import { emailSchema } from '@pypr/validation';
 import Link from 'next/link';
-import { useEffect, useState, type SyntheticEvent } from 'react';
-import { ApiError, apiRequest } from '@/lib/api';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useState, type SyntheticEvent } from 'react';
+import { apiRequest } from '@/lib/api';
+import { classifyVerifyError, type Outcome } from '@/lib/verify-outcome';
 
-type State =
-  | { step: 'ready' }
-  | { step: 'verifying' }
-  | { step: 'verified' }
-  | { step: 'failed'; message: string; canResend: boolean };
+type State = { step: 'verifying' } | { step: Outcome } | { step: 'missing' };
 
-const buttonClass =
-  'flex h-11 w-full items-center justify-center rounded-lg bg-ink px-5 text-sm font-medium text-canvas transition hover:bg-ink/90 disabled:opacity-60';
+/** How long the success message shows before going to the resumes. */
+const REDIRECT_DELAY_MS = 900;
 
 /**
- * Verifies only when the user clicks: email scanners open links automatically, and a
- * verify-on-load page would let them use up the one-time token.
+ * One request per token for the life of the page: React Strict Mode, remounts and re-renders
+ * all share it, so a one-time token is never sent twice by accident. Kept in memory only.
+ */
+const attempts = new Map<string, Promise<Outcome>>();
+
+async function verifyOnce(token: string): Promise<Outcome> {
+  try {
+    await apiRequest('/api/auth/verify-email', { method: 'POST', body: { token } });
+    return 'verified';
+  } catch (error) {
+    return classifyVerifyError(error);
+  }
+}
+
+function verify(token: string, fresh = false): Promise<Outcome> {
+  if (fresh) attempts.delete(token);
+  let attempt = attempts.get(token);
+  if (!attempt) {
+    attempt = verifyOnce(token);
+    attempts.set(token, attempt);
+  }
+  return attempt;
+}
+
+/**
+ * Verifies as soon as the emailed link opens (decision D28, replacing D14's button), then goes
+ * to the resumes. The API keeps the checks: single use, expiry, and no session for a used link.
  */
 export function VerifyEmailForm({ token }: { token: string }) {
-  const [state, setState] = useState<State>(
-    token
-      ? { step: 'ready' }
-      : { step: 'failed', message: 'This link is missing its token.', canResend: true },
-  );
+  const router = useRouter();
+  const [state, setState] = useState<State>(token ? { step: 'verifying' } : { step: 'missing' });
 
   // Drop the token from the address bar and history once it's in memory.
   useEffect(() => {
     if (window.location.search) window.history.replaceState(null, '', '/verify-email');
   }, []);
 
-  async function verify() {
-    setState({ step: 'verifying' });
-    try {
-      await apiRequest('/api/auth/verify-email', { method: 'POST', body: { token } });
-      setState({ step: 'verified' });
-    } catch (error) {
-      setState({
-        step: 'failed',
-        message: error instanceof Error ? error.message : 'Could not verify your email.',
-        canResend: error instanceof ApiError && error.code === AUTH_ERROR_CODES.invalidToken,
+  const run = useCallback(
+    (fresh: boolean) => {
+      let cancelled = false;
+      // A function, so the check after an await reads the current value.
+      const stopped = () => cancelled;
+      void verify(token, fresh).then(async (outcome) => {
+        if (stopped()) return;
+        if (outcome === 'already-verified') {
+          // Opened twice in this browser: already signed in, so just carry on.
+          const signedIn = await apiRequest('/api/auth/me').then(
+            () => true,
+            () => false,
+          );
+          if (stopped()) return;
+          if (signedIn) {
+            router.replace('/dashboard');
+            return;
+          }
+        }
+        setState({ step: outcome });
       });
-    }
-  }
+      return () => {
+        cancelled = true;
+      };
+    },
+    [token, router],
+  );
 
-  if (state.step === 'verified') {
-    return (
-      <section aria-live="polite">
-        <h1 className="text-2xl font-semibold tracking-tight">Email verified</h1>
-        <p className="mt-2 text-ink-muted">You&apos;re signed in. Welcome to Pypr.</p>
-        <Link href="/dashboard" className={`${buttonClass} mt-8`}>
-          Go to your resumes
-        </Link>
-      </section>
-    );
-  }
+  useEffect(() => (token ? run(false) : undefined), [token, run]);
 
-  if (state.step === 'failed') {
-    return (
-      <section aria-live="polite">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          We couldn&apos;t verify your email
-        </h1>
-        <p className="mt-2 text-ink-muted">{state.message}</p>
-        {state.canResend && <ResendForm />}
-      </section>
-    );
-  }
+  useEffect(() => {
+    if (state.step !== 'verified') return;
+    const timer = window.setTimeout(() => {
+      router.replace('/dashboard');
+    }, REDIRECT_DELAY_MS);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [state.step, router]);
 
+  switch (state.step) {
+    case 'verifying':
+      return (
+        <section role="status" aria-live="polite">
+          <Spinner />
+          <h1 className="mt-6 text-2xl font-semibold tracking-tight">Verifying your email…</h1>
+          <p className="mt-2 text-ink-muted">This only takes a moment.</p>
+        </section>
+      );
+    case 'verified':
+      return (
+        <section role="status" aria-live="polite">
+          <h1 className="text-2xl font-semibold tracking-tight">Email verified</h1>
+          <p className="mt-2 text-ink-muted">You&apos;re signed in. Taking you to your resumes…</p>
+          <Link href="/dashboard" className={`${buttonClass} mt-8`}>
+            Go to your resumes
+          </Link>
+        </section>
+      );
+    case 'already-verified':
+      return (
+        <section aria-live="polite">
+          <h1 className="text-2xl font-semibold tracking-tight">Your email is already verified</h1>
+          <p className="mt-2 text-ink-muted">This link was already used. Sign in to continue.</p>
+          <Link href="/login?next=%2Fdashboard" className={`${buttonClass} mt-8`}>
+            Sign in
+          </Link>
+        </section>
+      );
+    case 'retry':
+      return (
+        <section aria-live="polite">
+          <h1 className="text-2xl font-semibold tracking-tight">We couldn&apos;t reach Pypr</h1>
+          <p className="mt-2 text-ink-muted">
+            Check your connection and try again. Your link still works.
+          </p>
+          <button
+            type="button"
+            className={`${buttonClass} mt-8`}
+            onClick={() => {
+              setState({ step: 'verifying' });
+              run(true);
+            }}
+          >
+            Try again
+          </button>
+        </section>
+      );
+    case 'expired':
+    case 'invalid':
+    case 'missing':
+      return (
+        <section aria-live="polite">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {state.step === 'expired' ? 'This link has expired' : "We couldn't verify your email"}
+          </h1>
+          <p className="mt-2 text-ink-muted">
+            {state.step === 'expired'
+              ? 'Verification links work for 24 hours. We can send you a new one.'
+              : state.step === 'missing'
+                ? 'This link is incomplete. Open the link from the email again, or get a new one.'
+                : 'This link is invalid or has already been used. You can get a new one.'}
+          </p>
+          <ResendForm />
+        </section>
+      );
+  }
+}
+
+const buttonClass =
+  'flex h-11 w-full items-center justify-center rounded-lg bg-ink px-5 text-sm font-medium text-canvas transition hover:bg-ink/90 disabled:opacity-60';
+
+function Spinner() {
   return (
-    <section>
-      <h1 className="text-2xl font-semibold tracking-tight">Verify your email</h1>
-      <p className="mt-2 text-ink-muted">Confirm your email to finish creating your account.</p>
-      <button
-        type="button"
-        className={`${buttonClass} mt-8`}
-        disabled={state.step === 'verifying'}
-        onClick={() => void verify()}
-      >
-        {state.step === 'verifying' ? 'Verifying…' : 'Verify my email'}
-      </button>
-    </section>
+    <span
+      aria-hidden="true"
+      className="block h-8 w-8 animate-spin rounded-full border-2 border-line border-t-highlight motion-reduce:animate-none"
+    />
   );
 }
 

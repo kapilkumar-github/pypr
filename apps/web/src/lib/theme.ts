@@ -29,12 +29,22 @@ export function resolveTheme(
   return preference;
 }
 
+/** Where the app accent's CSS variables are cached (see app-accent.ts). */
+export const ACCENT_STORAGE_KEY = 'pypr-accent';
+/** Values the first-paint script accepts for --app-* variables: hex or rgb() with alpha. */
+export const ACCENT_VAR_VALUE = String.raw`^(#[0-9A-F]{6}|rgb\(\d{1,3} \d{1,3} \d{1,3} \/ \d{1,3}%\))$`;
+
 /**
- * Runs in <head> before the page paints. Must stay in sync with resolveTheme();
- * theme.test.ts runs it against the same cases.
+ * Runs in <head> before the page paints: sets data-theme, then the app accent's cached CSS
+ * variables (only --app-* names with hex or rgb() values, so storage can't inject anything
+ * else). Must stay in sync with resolveTheme(); theme.test.ts runs it against the same cases.
  */
 export const themeInitScript = `(function(){try{var p=localStorage.getItem(${JSON.stringify(
   THEME_STORAGE_KEY,
 )});var t=p==="light"||(p!=="dark"&&matchMedia(${JSON.stringify(
   LIGHT_SCHEME_QUERY,
-)}).matches)?"light":"dark";document.documentElement.setAttribute("data-theme",t)}catch(e){}})()`;
+)}).matches)?"light":"dark";document.documentElement.setAttribute("data-theme",t)}catch(e){}try{var a=JSON.parse(localStorage.getItem(${JSON.stringify(
+  ACCENT_STORAGE_KEY,
+)})||"null"),v=a&&a.vars,ok=new RegExp(${JSON.stringify(
+  ACCENT_VAR_VALUE,
+)});if(v&&typeof v==="object"){for(var k in v){if(/^--app-[a-z-]+$/.test(k)&&ok.test(v[k]))document.documentElement.style.setProperty(k,v[k])}}}catch(e){}})()`;

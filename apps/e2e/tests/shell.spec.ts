@@ -49,7 +49,7 @@ test('signed-in shell: sidebar navigation, collapse, Settings and profile menu',
 
   // Settings route
   await settings.click();
-  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page).toHaveURL(/\/settings\/appearance$/);
   await expect(settings).toHaveAttribute('aria-current', 'page');
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
 
@@ -90,7 +90,7 @@ test('on small screens the sidebar is a drawer', async ({ page }) => {
   await expectAccessible(page);
 
   await drawer.getByRole('link', { name: 'Settings' }).click();
-  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page).toHaveURL(/\/settings\/appearance$/);
   await expect(drawer).toBeHidden();
 
   await page.getByRole('button', { name: 'Open menu' }).click();

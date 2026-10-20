@@ -13,9 +13,16 @@ const PAGE_GUTTER_PX = 48;
  * Live preview: the exact HTML the PDF is printed from, in a sandboxed iframe (no scripts).
  * Re-rendered from deferred content so typing stays responsive.
  */
-export function ResumePreview({ content }: { content: ResumeContent }) {
+export function ResumePreview({
+  content,
+  photo,
+}: {
+  content: ResumeContent;
+  /** The resume's photo as a data: URI. */
+  photo?: string | undefined;
+}) {
   const deferred = useDeferredValue(content);
-  const html = useMemo(() => renderResumeHtml(deferred), [deferred]);
+  const html = useMemo(() => renderResumeHtml(deferred, { photo }), [deferred, photo]);
   const frame = useRef<HTMLIFrameElement>(null);
   const box = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);

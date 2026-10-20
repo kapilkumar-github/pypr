@@ -21,7 +21,7 @@ no security headers. Open items are listed at the end with a suggested priority.
 | Access token also checked against the session row, so logout is immediate                                | `auth.guard.ts`                    | `auth.e2e.test.ts` (logout)                     |
 | Refresh token: 256-bit random, stored as SHA-256, rotated, single use                                    | `auth.service.ts` `refresh`        | `auth.e2e.test.ts` (rotation, race, expiry)     |
 | Reusing a refresh token revokes the whole session                                                        | `auth.service.ts` `revokeForReuse` | `auth.e2e.test.ts`                              |
-| Verification links: one-time, 24 h, hash only, older links voided on use                                 | `auth.service.ts` `verifyEmail`    | `auth.e2e.test.ts`                              |
+| Verification links: one-time, 24 h, hash only, older links voided on use; a used link never signs in     | `auth.service.ts` `verifyEmail`    | `auth.e2e.test.ts`                              |
 | Cookies `HttpOnly`, `SameSite=Lax`, `Secure` (except local dev); refresh cookie only sent to `/api/auth` | `auth/auth-cookies.ts`             | `auth.e2e.test.ts` (attributes)                 |
 | Deny by default: global guard, routes opt out with `@Public()`                                           | `auth.guard.ts`                    | `resumes.e2e.test.ts` (401s)                    |
 | Rate limits per client IP: auth 10/min (refresh 30), PDF 20/min                                          | `@nestjs/throttler`                | `auth.e2e.test.ts` (429, per-IP)                |
@@ -66,6 +66,18 @@ like a password reset would).
   (`integrations/pdf/playwright-pdf-renderer.ts`). The HTML comes from our template, not from
   user-supplied markup. Test: `playwright-pdf-renderer.test.ts` "blocks network requests".
 - Renders are limited in number (`PDF_CONCURRENCY`) and time (`PDF_TIMEOUT_MS`).
+
+## Resume photos (D28)
+
+- `PUT /api/resumes/:id/photo`: owner-only (404 for anyone else, checked before decoding),
+  Origin check, 5 MB limit, 10 uploads a minute per IP, held in request memory only.
+- The type comes from the file's first bytes (JPEG, PNG or WebP only), so SVG and other formats
+  never reach the decoder. `sharp` decodes with a 40-megapixel limit and fails on corrupt data.
+- Only a JPEG the API re-encoded itself is stored (at most 800 px, no EXIF/GPS metadata), with
+  database CHECKs on type, size and dimensions. Decoder errors are not sent to the client.
+- `GET .../photo` is owner-only with `Cache-Control: private, no-cache`. Templates accept the
+  photo only as a `data:image/(jpeg|png|webp);base64` URI, so the preview and PDF keep their
+  no-network CSP.
 
 ## Resume import and AI (D22)
 

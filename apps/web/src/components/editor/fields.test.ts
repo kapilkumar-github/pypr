@@ -41,3 +41,10 @@ describe('entryLabel', () => {
     );
   });
 });
+
+describe('links entries', () => {
+  it('are labelled by their label, or their address when unlabelled', () => {
+    expect(entryLabel('links', { label: ' Portfolio ', url: 'ada.dev' })).toBe('Portfolio');
+    expect(entryLabel('links', { label: '', url: 'ada.dev' })).toBe('ada.dev');
+  });
+});

@@ -25,12 +25,25 @@ export const saveResumeRequestSchema = z.strictObject({
 });
 export type SaveResumeRequest = z.infer<typeof saveResumeRequestSchema>;
 
+/**
+ * A resume's profile photo (decision D28): stored apart from the content, fetched from
+ * GET /api/resumes/:id/photo. `updatedAt` changes whenever the photo is replaced.
+ */
+export const resumePhotoSchema = z.object({
+  updatedAt: z.iso.datetime(),
+  width: z.int().positive(),
+  height: z.int().positive(),
+});
+export type ResumePhoto = z.infer<typeof resumePhotoSchema>;
+
 export const resumeDocumentSchema = z.object({
   id: resumeIdSchema,
   revision: z.int().positive(),
   schemaVersion: z.int().positive(),
   updatedAt: z.iso.datetime(),
   content: resumeContentSchema,
+  /** Null when the resume has no photo. */
+  photo: resumePhotoSchema.nullable(),
 });
 export type ResumeDocument = z.infer<typeof resumeDocumentSchema>;
 
@@ -62,6 +75,20 @@ export const revisionConflictResponseSchema = z.object({
   currentRevision: z.int().positive(),
 });
 export type RevisionConflictResponse = z.infer<typeof revisionConflictResponseSchema>;
+
+/** Response of PUT /api/resumes/:id/photo. */
+export const resumePhotoResponseSchema = z.object({ photo: resumePhotoSchema });
+export type ResumePhotoResponse = z.infer<typeof resumePhotoResponseSchema>;
+
+/** Upload limit for PUT /api/resumes/:id/photo (the stored, re-encoded image is far smaller). */
+export const RESUME_PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+/** Image types a photo upload may be; the API checks the bytes, not the name or MIME type. */
+export const RESUME_PHOTO_ACCEPT = ['image/jpeg', 'image/png', 'image/webp'] as const;
+
+export const RESUME_PHOTO_ERROR_CODES = {
+  /** Not a JPEG, PNG or WebP image, unreadable, or too small. */
+  unsupportedImage: 'UNSUPPORTED_IMAGE',
+} as const;
 
 /** Upload limit for POST /api/resume-imports. */
 export const RESUME_IMPORT_MAX_BYTES = 5 * 1024 * 1024;

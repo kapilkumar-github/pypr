@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { AppearanceModule } from './appearance/appearance.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { validateEnv } from './config/env.js';
 import { DatabaseModule } from './database/database.module.js';
@@ -28,6 +29,7 @@ import { ResumesModule } from './resumes/resumes.module.js';
     PdfModule,
     ResumeParserModule,
     AuthModule,
+    AppearanceModule,
     HealthModule,
     ResumesModule,
     ResumeImportModule,

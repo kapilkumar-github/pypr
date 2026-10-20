@@ -3,7 +3,9 @@ import { createEntry, createResumeContent, createSection } from './operations.js
 import {
   RESUME_LIMITS,
   SECTION_TYPES,
+  isWebUrl,
   resumeContentSchema,
+  webUrlSchema,
   yearMonthSchema,
   type ResumeContent,
 } from './schema.js';
@@ -100,5 +102,33 @@ describe('yearMonthSchema', () => {
 
   it.each(['2024-13', '2024-1', 'March 2024', '24-01', '20245'])('rejects %j', (value) => {
     expect(yearMonthSchema.safeParse(value).success).toBe(false);
+  });
+});
+
+describe('web addresses', () => {
+  it('accepts bare domains and http(s) links, refuses other schemes and junk', () => {
+    for (const ok of [
+      'ada.dev',
+      'www.ada.dev/blog?x=1#top',
+      'https://linkedin.com/in/ada-lovelace',
+      'http://localhost.dev:8080/path',
+      'https://bücher.de',
+      'behance.net/ada',
+    ]) {
+      expect(isWebUrl(ok), ok).toBe(true);
+    }
+    for (const bad of [
+      'javascript:alert(1)',
+      'mailto:ada@example.com',
+      'ftp://ada.dev',
+      'ada',
+      'ada dev.com',
+      'https://',
+      'data:text/html,hi',
+    ]) {
+      expect(isWebUrl(bad), bad).toBe(false);
+    }
+    expect(webUrlSchema.safeParse('').success).toBe(true);
+    expect(webUrlSchema.safeParse('not a url').success).toBe(false);
   });
 });

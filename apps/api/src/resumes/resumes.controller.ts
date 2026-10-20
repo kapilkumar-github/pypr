@@ -51,6 +51,7 @@ import { apiSchema } from '../common/openapi-schema.js';
 import { ZodBodyPipe } from '../common/zod-body.pipe.js';
 import { PdfRenderer } from '../integrations/pdf/pdf-renderer.js';
 import { pdfFileName } from './pdf-file-name.js';
+import { ResumePhotosService } from './resume-photos.service.js';
 import { ResumesService } from './resumes.service.js';
 
 const idParam = new ParseUUIDPipe();
@@ -66,6 +67,7 @@ export class ResumesController {
 
   constructor(
     private readonly resumes: ResumesService,
+    private readonly photos: ResumePhotosService,
     private readonly pdf: PdfRenderer,
   ) {}
 
@@ -142,10 +144,11 @@ export class ResumesController {
     const pageSize = pageSizeSchema.safeParse(pageSizeParam);
     if (!pageSize.success) throw new BadRequestException('pageSize must be A4 or Letter');
 
-    const { content } = await this.resumes.get(auth.userId, id);
+    const { content, photo: hasPhoto } = await this.resumes.get(auth.userId, id);
+    const photo = hasPhoto ? await this.photos.dataUri(auth.userId, id) : undefined;
     let pdf: Buffer;
     try {
-      pdf = await this.pdf.render(renderResumeHtml(content, { pageSize: pageSize.data }));
+      pdf = await this.pdf.render(renderResumeHtml(content, { pageSize: pageSize.data, photo }));
     } catch (error) {
       this.logger.error(
         `PDF failed for resume ${id}: ${error instanceof Error ? error.message : 'unknown error'}`,

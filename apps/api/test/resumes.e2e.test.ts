@@ -60,7 +60,7 @@ describe('POST /api/resumes', () => {
   it('creates a resume with the starter sections at revision 1', async () => {
     const res = await asUser(alice).create({ title: '  Engineering CV ' }).expect(201);
     const doc = res.body as ResumeDocument;
-    expect(doc).toMatchObject({ revision: 1, schemaVersion: 2 });
+    expect(doc).toMatchObject({ revision: 1, schemaVersion: 3 });
     expect(doc.content.title).toBe('Engineering CV');
     expect(doc.content.template).toBe('classic');
     expect(doc.content.sections.map((s) => s.type)).toEqual(['experience', 'education', 'skills']);
@@ -332,6 +332,64 @@ describe('presentation settings', () => {
       .resume.update({ where: { id: doc.id }, data: { font: 'retired-font' } });
     const reread = (await asUser(alice).get(doc.id).expect(200)).body as ResumeDocument;
     expect(reread.content.settings.font).toBe('helvetica');
+  });
+});
+
+describe('websites and profiles (schema version 3)', () => {
+  it('moves the links of a resume stored at version 2 into a section, once', async () => {
+    const doc = await newResume(alice);
+    const prisma = app.get(PrismaService);
+    // A resume saved before version 3: links in the basics columns.
+    await prisma.resume.update({ where: { id: doc.id }, data: { schemaVersion: 2 } });
+    await prisma.resumeBasics.update({
+      where: { resumeId: doc.id },
+      data: { website: 'ada.dev', linkedin: '', github: 'https://github.com/ada' },
+    });
+
+    const read = (await asUser(alice).get(doc.id).expect(200)).body as ResumeDocument;
+    expect(read.schemaVersion).toBe(3);
+    expect(read.content.basics).not.toHaveProperty('website');
+    expect(read.content.sections[0]?.type).toBe('links');
+    expect(read.content.sections[0]?.entries.map((e) => e.data)).toEqual([
+      { label: 'Website', url: 'ada.dev' },
+      { label: 'GitHub', url: 'https://github.com/ada' },
+    ]);
+
+    // Saving stores them as a section and blanks the old columns, so they never come back twice.
+    const saved = (await save(alice, read, read.content).expect(200)).body as ResumeDocument;
+    expect(saved.content.sections.map((s) => s.id)).toEqual(read.content.sections.map((s) => s.id));
+    expect(await prisma.resumeBasics.findUnique({ where: { resumeId: doc.id } })).toMatchObject({
+      website: '',
+      linkedin: '',
+      github: '',
+    });
+    const again = (await asUser(alice).get(doc.id).expect(200)).body as ResumeDocument;
+    expect(again.content.sections.filter((s) => s.type === 'links')).toHaveLength(1);
+  });
+
+  it('accepts any web address, refuses other schemes and a second links section', async () => {
+    const doc = await newResume(alice);
+    let content = addSection(doc.content, 'links');
+    const links = content.sections.at(-1)?.id ?? '';
+    content = addEntry(addEntry(content, links), links);
+    const [first, second] = content.sections.at(-1)?.entries.map((e) => e.id) ?? [];
+    content = updateEntryData<'links'>(content, links, first ?? '', {
+      label: 'Portfolio',
+      url: 'https://dribbble.com/ada',
+    });
+    const ok = updateEntryData<'links'>(content, links, second ?? '', { url: 'ada.substack.com' });
+    const saved = (await save(alice, doc, ok).expect(200)).body as ResumeDocument;
+    expect(saved.content.sections.at(-1)?.entries.map((e) => e.data)).toEqual([
+      { label: 'Portfolio', url: 'https://dribbble.com/ada' },
+      { label: '', url: 'ada.substack.com' },
+    ]);
+
+    const bad = updateEntryData<'links'>(content, links, second ?? '', {
+      url: 'javascript:alert(1)',
+    });
+    await save(alice, saved, bad).expect(400);
+    const twice = { ...ok, sections: [...ok.sections, { ...createSection('links'), entries: [] }] };
+    await save(alice, saved, twice).expect(400);
   });
 });
 

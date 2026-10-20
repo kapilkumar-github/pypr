@@ -8,6 +8,7 @@ export const DEFAULT_SECTION_TITLES: Record<SectionType, string> = {
   certifications: 'Certifications',
   awards: 'Awards',
   languages: 'Languages',
+  links: 'Websites & Profiles',
   custom: 'Additional',
 };
 
@@ -18,9 +19,6 @@ export function emptyBasics(): Basics {
     email: '',
     phone: '',
     location: '',
-    website: '',
-    linkedin: '',
-    github: '',
     summary: '',
   };
 }
@@ -52,6 +50,7 @@ export function emptyEntryData<T extends SectionType>(type: T): EntryData<T> {
     certifications: () => ({ name: '', issuer: '', date: '', url: '' }),
     awards: () => ({ title: '', issuer: '', date: '', summary: '' }),
     languages: () => ({ language: '', fluency: '' }),
+    links: () => ({ label: '', url: '' }),
     custom: () => ({ title: '', subtitle: '', date: '', summary: '', highlights: [] }),
   };
   return byType[type]();

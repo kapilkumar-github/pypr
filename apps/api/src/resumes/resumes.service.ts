@@ -15,7 +15,12 @@ import {
 } from '@pypr/validation';
 import { PrismaService } from '../database/prisma.service.js';
 import { Prisma } from '../generated/prisma/client.js';
-import { RESUME_CONTENT_INCLUDE, toResumeDocument, toResumeSummary } from './resume.mapper.js';
+import {
+  BLANK_LEGACY_LINKS,
+  RESUME_CONTENT_INCLUDE,
+  toResumeDocument,
+  toResumeSummary,
+} from './resume.mapper.js';
 import { DEFAULT_TEMPLATE_ID, assertKnownTemplate } from './templates.js';
 
 /** Every query is scoped by owner: another user's resume is simply "not found". */
@@ -157,7 +162,7 @@ export class ResumesService {
         await tx.resumeBasics.upsert({
           where: { resumeId },
           create: { resumeId, ...content.basics },
-          update: content.basics,
+          update: { ...content.basics, ...BLANK_LEGACY_LINKS },
         });
 
         const [existingSections, existingEntries] = await Promise.all([

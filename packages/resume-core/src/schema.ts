@@ -7,7 +7,8 @@ import { z } from 'zod';
  */
 
 export const RESUME_LIMITS = {
-  sections: 20,
+  /** 21 since version 3: moving old Website/LinkedIn/GitHub fields into a section must fit. */
+  sections: 21,
   entriesPerSection: 50,
   listItems: 30,
 } as const;
@@ -25,15 +26,31 @@ export const yearMonthSchema = z.union([
 ]);
 export type YearMonth = z.infer<typeof yearMonthSchema>;
 
+/**
+ * A web address as people type it: "example.com/me" or "https://example.com/me". Only http(s);
+ * other schemes (javascript:, data:, mailto:) and spaces are refused rather than rewritten.
+ * Templates add "https://" to bare domains when they link it.
+ */
+const WEB_URL = /^(https?:\/\/)?([\p{L}\p{N}-]+\.)+[\p{L}]{2,}(:\d{1,5})?([/?#]\S*)?$/iu;
+
+export function isWebUrl(value: string): boolean {
+  return WEB_URL.test(value.trim());
+}
+
+export const webUrlSchema = z
+  .string()
+  .max(300)
+  .refine((value) => value.trim() === '' || isWebUrl(value), {
+    message: 'Enter a web address like example.com or https://example.com',
+  });
+
+/** Contact details. Websites and profiles live in the "links" section since version 3. */
 export const basicsSchema = z.strictObject({
   fullName: text(120),
   headline: text(160),
   email: text(320),
   phone: text(40),
   location: text(120),
-  website: text(300),
-  linkedin: text(300),
-  github: text(300),
   summary: text(3000),
 });
 export type Basics = z.infer<typeof basicsSchema>;
@@ -46,6 +63,7 @@ export const SECTION_TYPES = [
   'certifications',
   'awards',
   'languages',
+  'links',
   'custom',
 ] as const;
 export type SectionType = (typeof SECTION_TYPES)[number];
@@ -110,6 +128,11 @@ export const entryDataSchemas = {
     language: text(60),
     fluency: text(60),
   }),
+  /** Any website or profile: no fixed list of platforms. */
+  links: z.strictObject({
+    label: text(120),
+    url: webUrlSchema,
+  }),
   custom: z.strictObject({
     title: text(160),
     subtitle: text(160),
@@ -150,6 +173,7 @@ export const sectionSchemaByType = {
   certifications: sectionSchema('certifications'),
   awards: sectionSchema('awards'),
   languages: sectionSchema('languages'),
+  links: sectionSchema('links'),
   custom: sectionSchema('custom'),
 } satisfies Record<SectionType, z.ZodType>;
 
@@ -161,6 +185,7 @@ export const resumeSectionSchema = z.discriminatedUnion('type', [
   sectionSchemaByType.certifications,
   sectionSchemaByType.awards,
   sectionSchemaByType.languages,
+  sectionSchemaByType.links,
   sectionSchemaByType.custom,
 ]);
 export type ResumeSection = z.infer<typeof resumeSectionSchema>;

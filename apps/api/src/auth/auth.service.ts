@@ -117,7 +117,10 @@ export class AuthService {
 
   /**
    * Consumes an emailed verification token: marks the email verified, voids the user's other
-   * verification links and signs them in.
+   * verification links and signs them in. The web page calls this as soon as the link opens
+   * (decision D28), so a used link whose email is verified (opened twice, or first by an email
+   * scanner) says so instead of failing; it never starts a session, though. Tokens stay
+   * single-use and expire as before.
    */
   async verifyEmail(token: string, client: ClientInfo): Promise<SessionResult> {
     const record = await this.prisma.userToken.findFirst({
@@ -125,8 +128,10 @@ export class AuthService {
       include: { user: true },
     });
     const now = new Date();
-    if (!record || record.usedAt || record.expiresAt <= now) {
-      throw invalidToken();
+    if (!record) throw invalidToken();
+    if (record.usedAt || record.expiresAt <= now) {
+      if (record.user.emailVerifiedAt) throw alreadyVerified();
+      throw record.usedAt ? invalidToken() : expiredToken();
     }
 
     const consumed = await this.prisma.$transaction(async (tx) => {
@@ -145,7 +150,8 @@ export class AuthService {
       });
       return true;
     });
-    if (!consumed) throw invalidToken();
+    // Another request used this token a moment ago (a double load): that one verified it.
+    if (!consumed) throw alreadyVerified();
 
     return this.startSession(record.user, client);
   }
@@ -319,7 +325,23 @@ function invalidToken(): HttpException {
   return authError(
     HttpStatus.BAD_REQUEST,
     AUTH_ERROR_CODES.invalidToken,
-    'This verification link is invalid or has expired.',
+    'This verification link is invalid or has already been used.',
+  );
+}
+
+function expiredToken(): HttpException {
+  return authError(
+    HttpStatus.BAD_REQUEST,
+    AUTH_ERROR_CODES.verificationLinkExpired,
+    'This verification link has expired.',
+  );
+}
+
+function alreadyVerified(): HttpException {
+  return authError(
+    HttpStatus.CONFLICT,
+    AUTH_ERROR_CODES.emailAlreadyVerified,
+    'Your email is already verified. Sign in to continue.',
   );
 }
 

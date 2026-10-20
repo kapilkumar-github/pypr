@@ -52,12 +52,16 @@ export type MessageResponse = z.infer<typeof messageResponseSchema>;
  * Machine-readable `code` on auth error responses, for the web app to act on:
  * EMAIL_ALREADY_REGISTERED -> send the user to the login screen,
  * EMAIL_NOT_VERIFIED -> offer to resend the verification link,
- * INVALID_TOKEN -> the emailed link is wrong, used or expired.
+ * INVALID_TOKEN -> the emailed link is wrong (or already used), offer a new one,
+ * VERIFICATION_LINK_EXPIRED -> the link is too old, offer a new one,
+ * EMAIL_ALREADY_VERIFIED -> the link was already used and the email is verified: sign in.
  */
 export const AUTH_ERROR_CODES = {
   emailAlreadyRegistered: 'EMAIL_ALREADY_REGISTERED',
   emailNotVerified: 'EMAIL_NOT_VERIFIED',
   invalidToken: 'INVALID_TOKEN',
+  verificationLinkExpired: 'VERIFICATION_LINK_EXPIRED',
+  emailAlreadyVerified: 'EMAIL_ALREADY_VERIFIED',
 } as const;
 export type AuthErrorCode = (typeof AUTH_ERROR_CODES)[keyof typeof AUTH_ERROR_CODES];
 

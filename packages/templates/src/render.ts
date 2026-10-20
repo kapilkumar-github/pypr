@@ -10,6 +10,8 @@ export interface RenderOptions {
   pageSize?: PageSize;
   /** Margin inside each page, as CSS length. */
   margin?: string;
+  /** The resume's photo as a base64 data: URI (see safePhotoSrc). */
+  photo?: string | undefined;
 }
 
 const escapeHtml = (value: string) =>
@@ -25,7 +27,7 @@ export function renderResumeHtml(content: ResumeContent, options: RenderOptions 
   const size = PAGE_SIZES[options.pageSize ?? 'A4'];
   const margin = options.margin ?? '16mm';
   const body = renderToStaticMarkup(
-    createElement(template.Component, { resume: toResumeView(content) }),
+    createElement(template.Component, { resume: toResumeView(content, { photo: options.photo }) }),
   );
   const title = escapeHtml(content.title.trim() || content.basics.fullName.trim() || 'Resume');
 

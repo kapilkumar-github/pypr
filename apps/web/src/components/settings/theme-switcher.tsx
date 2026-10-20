@@ -3,7 +3,7 @@
 import type { ComponentType, SVGProps } from 'react';
 import { MonitorIcon, MoonIcon, SunIcon } from '@/components/icons';
 import type { ThemePreference } from '@/lib/theme';
-import { setThemePreference, useThemePreference } from '@/lib/theme-store';
+import { useThemePreference } from '@/lib/theme-store';
 
 const options: {
   value: ThemePreference;
@@ -35,7 +35,8 @@ const options: {
   },
 ];
 
-export function ThemeSwitcher() {
+/** Theme cards. `onSelect` applies and saves the choice (see AppearanceSettings). */
+export function ThemeSwitcher({ onSelect }: { onSelect: (theme: ThemePreference) => void }) {
   const current = useThemePreference();
 
   return (
@@ -53,7 +54,7 @@ export function ThemeSwitcher() {
               value={value}
               checked={current === value}
               onChange={() => {
-                setThemePreference(value);
+                onSelect(value);
               }}
               className="sr-only"
             />

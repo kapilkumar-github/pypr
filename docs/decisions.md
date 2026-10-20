@@ -392,3 +392,53 @@ production project's `public` schema was emptied (the old app's 13 tables, its g
 all types/functions; no backup, at the owner's request; Supabase's own schemas untouched) and
 the 4 Prisma migrations were applied with `prisma migrate deploy`, with no drift afterwards.
 The old Go instance (`~/pypr-go`) was deleted; its systemd unit still needs `sudo` to remove.
+
+## D28. Resume photos, generic links, app appearance, automatic verification (2026-10-20)
+
+Approved by the product owner before milestones 12–17.
+
+- **Photos** live in a `resume_photos` table in Postgres (one per resume, deleted with it), never
+  in the resume content. The API decodes every upload with `sharp` and stores a re-encoded JPEG
+  (at most 800 px), so only real JPEG, PNG or WebP images get in and EXIF/GPS data is dropped.
+  No object storage account is needed yet; if photos move to R2 or Supabase Storage later, the
+  bytes go behind a storage port (D13) and the table keeps the metadata.
+- **Links.** A Websites & Profiles section (`links`, a unique standard type; any number of
+  label + URL entries, no fixed platform list) replaces the fixed Website, LinkedIn and GitHub
+  fields. URLs must be web addresses (`example.com` or `http(s)://…`); other schemes are refused,
+  never rewritten; templates add `https://` to bare domains when linking. Classic prints the label
+  and the address, so links work on paper and are clickable in the PDF. **Schema version 3**
+  moves existing values into that section, placed first (a value that isn't a web address
+  becomes the label, so nothing is lost); the section limit went from 20 to 21 so this always
+  fits. Imports use the same rule. The old `resume_basics` columns got empty defaults, are
+  ignored from version 3 on and blanked on the next save; a later migration can drop them.
+  The AI parser returns a generic `links` list (label + URL as written, any platform) instead of
+  three fixed fields; an address that isn't a web address is kept in the label, never linked.
+- **Add section** (milestone 14) is a two-column grid of buttons, one per section type with an
+  icon, replacing the select + Add button. Standard types already on the resume are disabled with
+  "Added" (a check mark alone on phones); Custom section spans the row and is unlimited. New
+  sections go to the end, scroll into view and get focus. Duplicate clicks can't add a standard
+  type twice (`canAddSection`), and autosave retries can't duplicate rows (client ids, D3).
+- **App appearance is per account:** `users.theme_preference` and `users.app_accent_color`
+  (nullable: null = never chosen), `GET/PATCH /api/me/appearance` (PATCH changes only the fields
+  sent). The browser caches both; the `<head>` script applies the theme and the accent's
+  `--app-*` CSS variables (allow-listed names and hex/rgb values only) before first paint. After
+  sign-in, the account's values apply unless this browser changed one since the last sync or the
+  account never had one; then the browser's value is saved, so existing choices survive.
+  The theme tokens read `var(--app-accent, #b7ff3c)` etc.; a custom accent gets readable text
+  and ≥ 3:1 indicator shades per theme; the default lime keeps D25's tuned values.
+- **Separate from resume design.** This replaces D25's "the editor recolors itself with the
+  resume's accent": the editor now uses the app accent; a resume's accent, font and density only
+  affect that resume's preview and PDF. The shared `AccentPicker` serves both (Settings and the
+  editor's Templates tab), each with its own value and sample.
+- **Settings** (milestone 16): `/settings` opens `/settings/appearance`; a category list on the
+  left (a strip on phones) with only Appearance for now, the panel on the right. Accent changes
+  apply at once and save after 400 ms of quiet; a failed save says it will sync later.
+- **Email verification runs on page load** (replaces D14's click). The page sends one request
+  per token for its lifetime (shared across React remounts), shows "Verifying your email…", and
+  on success goes to `/dashboard`. Errors: `INVALID_TOKEN` (wrong or used), new
+  `VERIFICATION_LINK_EXPIRED` (offer a new link), new 409 `EMAIL_ALREADY_VERIFIED` (a used or
+  expired link whose email is verified: the page goes to the resumes when already signed in,
+  else offers sign-in; no session is ever started from a used link). Network, 429 and 5xx
+  failures offer Try again. Single use, expiry, hashing and voiding of older links are unchanged.
+  Trade-off: an email scanner that runs JavaScript can now use the link first; the user then sees
+  "already verified" and signs in with their password.

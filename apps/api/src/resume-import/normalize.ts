@@ -4,6 +4,7 @@ import {
   basicsSchema,
   emptyBasics,
   entryDataSchemas,
+  isWebUrl,
   resumeContentSchema,
   type ResumeContent,
   type ResumeSection,
@@ -95,6 +96,20 @@ function entryData(type: SectionType, raw: Record<string, unknown>): Record<stri
 const isEmptyData = (data: Record<string, unknown>) =>
   Object.values(data).every((v) => v === '' || v === false || (Array.isArray(v) && v.length === 0));
 
+/**
+ * The model's links as entries. An address that isn't a web address (or is an email) is never
+ * linked: it's kept as the label for the user to fix, as in the schema version 3 upgrade.
+ */
+function linkEntries(parsed: ParsedResume): Record<string, unknown>[] {
+  const shape = entryDataSchemas.links.shape;
+  return parsed.links.map((link) => {
+    const label = fit(link.label, shape.label);
+    const url = fit(link.url, shape.url);
+    if (!url || isWebUrl(url)) return { label, url };
+    return { label: fit([label, url].filter(Boolean).join(': '), shape.label), url: '' };
+  });
+}
+
 /** Per standard section: the model's entries mapped to domain field names. */
 function standardEntries(parsed: ParsedResume, type: (typeof STANDARD_PARSED_SECTIONS)[number]) {
   switch (type) {
@@ -154,9 +169,6 @@ export function toResumeContent(
     email: fit(b.email, basicsShape.email),
     phone: fit(b.phone, basicsShape.phone),
     location: fit(b.location, basicsShape.location),
-    website: fit(b.website, basicsShape.website),
-    linkedin: fit(b.linkedin, basicsShape.linkedin),
-    github: fit(b.github, basicsShape.github),
     summary: fit(b.summary, basicsShape.summary),
   };
 
@@ -194,7 +206,9 @@ export function toResumeContent(
 
   // Document order first, then anything the order list missed, each at most once.
   const order = [...parsed.section_order.map((s) => s.trim().toLowerCase()), ...available.keys()];
-  const sections: ResumeSection[] = [];
+  // Websites and profiles go into a Websites & Profiles section first, near the contact details.
+  const links = build('links', '', linkEntries(parsed));
+  const sections: ResumeSection[] = links ? [links] : [];
   const used = new Set<string>();
   for (const key of order) {
     const make = available.get(key);

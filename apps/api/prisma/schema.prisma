@@ -23,6 +23,10 @@ model User {
   passwordHash    String?   @map("password_hash") @db.Text
   /// Set when the user opens the verification link. Sign-in is blocked until then.
   emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz(3)
+  /// The app's look (decision D28), separate from any resume's design. Null = never chosen.
+  themePreference AppTheme? @map("theme_preference")
+  /// "#RRGGBB" uppercase (CHECK in the migration). Null = never chosen (neon lime).
+  appAccentColor  String?   @map("app_accent_color") @db.Char(7)
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -73,6 +77,14 @@ enum IdentityProviderKind {
   linkedin
 
   @@map("identity_provider_kind")
+}
+
+enum AppTheme {
+  dark
+  light
+  system
+
+  @@map("app_theme")
 }
 
 /// Links a user to an account at an external provider.
@@ -138,6 +150,7 @@ model Resume {
   user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   basics   ResumeBasics?
   sections ResumeSection[]
+  photo    ResumePhoto?
 
   @@unique([userId, idempotencyKey], map: "uq_resumes_user_idempotency_key")
   @@index([userId, updatedAt(sort: Desc)], map: "idx_resumes_user_updated")
@@ -152,14 +165,32 @@ model ResumeBasics {
   email    String @db.VarChar(320)
   phone    String @db.VarChar(40)
   location String @db.VarChar(120)
-  website  String @db.VarChar(300)
-  linkedin String @db.VarChar(300)
-  github   String @db.VarChar(300)
+  /// Legacy (schema version 2): moved into the "links" section by the version 3 upgrade and
+  /// blanked on the next save. Kept until a cleanup migration drops them (decision D28).
+  website  String @default("") @db.VarChar(300)
+  linkedin String @default("") @db.VarChar(300)
+  github   String @default("") @db.VarChar(300)
   summary  String @db.Text
 
   resume Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
 
   @@map("resume_basics")
+}
+
+/// The resume's profile photo (decision D28), kept out of the content so autosave never carries
+/// image bytes. Always a JPEG the API re-encoded itself (EXIF stripped, at most 800 px).
+model ResumePhoto {
+  resumeId    String   @id @map("resume_id") @db.Uuid
+  contentType String   @map("content_type") @db.VarChar(40)
+  data        Bytes
+  width       Int
+  height      Int
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  resume Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@map("resume_photos")
 }
 
 enum ResumeSectionType {
@@ -170,6 +201,7 @@ enum ResumeSectionType {
   certifications
   awards
   languages
+  links
   custom
 
   @@map("resume_section_type")

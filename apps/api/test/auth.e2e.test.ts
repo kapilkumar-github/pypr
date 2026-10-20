@@ -170,10 +170,21 @@ describe('POST /api/auth/verify-email', () => {
     expect(newer).not.toBe(older);
 
     await verify(newer).expect(200);
+    // Opening either link again says the email is verified, without signing anyone in.
     for (const token of [newer, older]) {
-      const res = await verify(token).expect(400);
-      expect(res.body).toMatchObject({ code: 'INVALID_TOKEN' });
+      const res = await verify(token).expect(409);
+      expect(res.body).toMatchObject({ code: 'EMAIL_ALREADY_VERIFIED' });
+      expect(setCookies(res).pypr_at).toBeUndefined();
     }
+  });
+
+  it('verifies once when the same link is opened twice at the same moment', async () => {
+    await register('twice').expect(202);
+    const token = verificationTokenFor(outbox, email('twice'));
+    const results = await Promise.all([verify(token), verify(token)]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 409]);
+    const sessions = await prisma.session.count({ where: { user: { email: email('twice') } } });
+    expect(sessions).toBe(1);
   });
 
   it('rejects expired and unknown tokens', async () => {
@@ -183,8 +194,12 @@ describe('POST /api/auth/verify-email', () => {
       where: { user: { email: email('stale') } },
       data: { expiresAt: new Date(Date.now() - 1000) },
     });
-    await verify(token).expect(400);
-    await verify('x'.repeat(43)).expect(400);
+    expect((await verify(token).expect(400)).body).toMatchObject({
+      code: 'VERIFICATION_LINK_EXPIRED',
+    });
+    expect((await verify('x'.repeat(43)).expect(400)).body).toMatchObject({
+      code: 'INVALID_TOKEN',
+    });
     expect(
       (await prisma.user.findUniqueOrThrow({ where: { email: email('stale') } })).emailVerifiedAt,
     ).toBeNull();

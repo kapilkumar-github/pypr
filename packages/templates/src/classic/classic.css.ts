@@ -13,6 +13,10 @@ export const classicCss = /* css */ `
 .resume p, .resume h1, .resume h2, .resume h3, .resume ul { margin: 0; }
 
 .masthead { margin-bottom: calc(14pt * var(--s)); }
+.masthead-photo { display: flex; align-items: center; gap: 14pt; }
+.masthead-text { min-width: 0; }
+/* Square crop from any photo shape; faces usually sit above the middle. */
+.photo { flex-shrink: 0; width: 64pt; height: 64pt; border-radius: 50%; object-fit: cover; object-position: 50% 30%; border: 0.75pt solid var(--resume-accent-line, #d4d4d8); }
 .name { font-size: 22pt; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
 .headline { margin-top: 3pt; font-size: 11.5pt; color: #3f3f46; }
 .contacts { display: flex; flex-wrap: wrap; gap: 2pt 0; margin-top: 7pt; padding: 0; list-style: none; font-size: 9pt; color: #52525b; }
@@ -45,6 +49,9 @@ export const classicCss = /* css */ `
 .entry-compact .entry-title::after { content: ":"; }
 .entry-compact .entry-title:empty::after { content: none; }
 .inline-list { color: #27272a; }
+.links { display: flex; flex-wrap: wrap; gap: 2pt 14pt; padding: 0; list-style: none; }
+.links li { font-weight: 600; }
+.link-address { margin-left: 2pt; font-weight: 400; color: #52525b; }
 .entry-bullets li::marker { color: var(--resume-accent-text, currentColor); }
 .rich p + p, .rich p + ul, .rich p + ol, .rich ul + p, .rich ol + p { margin-top: calc(3pt * var(--s)); }
 .rich ul, .rich ol { margin: 0; padding-left: 13pt; }

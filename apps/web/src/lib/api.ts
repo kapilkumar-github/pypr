@@ -54,7 +54,7 @@ export function refreshSession(): Promise<boolean> {
 }
 
 export interface ApiRequestOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   headers?: Record<string, string>;
   /** Sent with the page being closed (autosave on tab close). */
@@ -159,10 +159,11 @@ export async function apiUpload(
   path: string,
   form: FormData,
   signal?: AbortSignal,
+  method: 'POST' | 'PUT' = 'POST',
 ): Promise<unknown> {
   const send = () =>
     fetch(path, {
-      method: 'POST',
+      method,
       body: form,
       credentials: 'same-origin',
       ...(signal && { signal }),

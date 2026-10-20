@@ -37,6 +37,28 @@ describe('toResumeContent', () => {
     ]);
   });
 
+  it('puts every website and profile into a Websites & Profiles section first', () => {
+    const parsed = sampleParsedResume();
+    parsed.links = [
+      { label: 'Portfolio', url: ' jordan.dev ' },
+      { label: 'Behance', url: 'https://www.behance.net/jordan' },
+      { label: null, url: 'jordan.substack.com' },
+      { label: 'Email', url: 'mailto:jordan@example.com' },
+      { label: null, url: 'my github' },
+      { label: null, url: '' },
+    ];
+    const { content } = toResumeContent(parsed, options);
+    const [links] = content.sections;
+    expect(links).toMatchObject({ type: 'links', title: 'Websites & Profiles' });
+    expect(links?.entries.map((e) => e.data)).toEqual([
+      { label: 'Portfolio', url: 'jordan.dev' },
+      { label: 'Behance', url: 'https://www.behance.net/jordan' },
+      { label: '', url: 'jordan.substack.com' },
+      { label: 'Email: mailto:jordan@example.com', url: '' },
+      { label: 'my github', url: '' },
+    ]);
+  });
+
   it('turns "Present" into an ongoing role and drops empty bullets', () => {
     const { content } = toResumeContent(sampleParsedResume(), options);
     expect(content.sections[0]?.entries[0]?.data).toMatchObject({

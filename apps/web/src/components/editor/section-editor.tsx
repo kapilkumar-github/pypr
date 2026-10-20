@@ -79,6 +79,7 @@ export function SectionEditor({
         transition: transition,
       }}
       aria-label={title}
+      data-section-id={section.id}
       className={cn(
         'rounded-xl border border-line bg-surface',
         !section.visible && 'opacity-70',

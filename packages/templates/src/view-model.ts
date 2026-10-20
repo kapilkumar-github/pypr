@@ -9,12 +9,29 @@ export interface ResumeView {
   name: string;
   headline: string;
   summary: string;
+  /** Profile photo as an inline image (data: URI); absent when there is none. */
+  photo?: string;
   contacts: ContactItem[];
   sections: SectionView[];
 }
 
+export interface ResumeViewOptions {
+  /** The resume's photo as a base64 data: URI. Anything else is ignored. */
+  photo?: string | undefined;
+}
+
+/**
+ * Only inline JPEG, PNG or WebP images: the preview and the PDF allow no network requests, and
+ * this keeps anything else (SVG, other schemes) out of the page.
+ */
+const PHOTO_DATA_URI = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
+
+export function safePhotoSrc(value: string | undefined): string | undefined {
+  return value !== undefined && PHOTO_DATA_URI.test(value) ? value : undefined;
+}
+
 export interface ContactItem {
-  kind: 'email' | 'phone' | 'location' | 'website' | 'linkedin' | 'github';
+  kind: 'email' | 'phone' | 'location';
   label: string;
   /** Only http(s), mailto and tel links; absent for plain text. */
   href?: string;
@@ -105,11 +122,6 @@ function contactsOf(basics: Basics): ContactItem[] {
       ? { kind: 'phone', label: basics.phone.trim(), ...opt(safeHref(basics.phone, 'phone')) }
       : null,
     basics.location.trim() ? { kind: 'location', label: basics.location.trim() } : null,
-    ...(['website', 'linkedin', 'github'] as const).map((kind): ContactItem | null =>
-      basics[kind].trim()
-        ? { kind, label: displayUrl(basics[kind]), ...opt(safeHref(basics[kind])) }
-        : null,
-    ),
   ];
   return items.filter((item): item is ContactItem => item !== null);
 }
@@ -198,6 +210,19 @@ function entriesOf(section: ResumeSection): EntryView[] {
           title: d.language.trim(),
           subtitle: d.fluency.trim(),
         }));
+    case 'links':
+      // Title is the label, falling back to the address; meta is the address as printed.
+      return section.entries
+        .filter((e) => e.visible)
+        .map(({ id, data: d }) => {
+          const address = d.url.trim() ? displayUrl(d.url) : '';
+          return {
+            ...base(id),
+            title: d.label.trim() || address,
+            meta: d.label.trim() ? address : '',
+            ...opt(safeHref(d.url)),
+          };
+        });
     case 'custom':
       return section.entries
         .filter((e) => e.visible)
@@ -221,12 +246,14 @@ const isEmpty = (e: EntryView) =>
   e.bullets.length === 0 &&
   e.tags.length === 0;
 
-export function toResumeView(content: ResumeContent): ResumeView {
+export function toResumeView(content: ResumeContent, options: ResumeViewOptions = {}): ResumeView {
+  const photo = safePhotoSrc(options.photo);
   return {
     title: content.title.trim(),
     name: content.basics.fullName.trim(),
     headline: content.basics.headline.trim(),
     summary: content.basics.summary.trim(),
+    ...(photo && { photo }),
     contacts: contactsOf(content.basics),
     sections: content.sections
       .filter((s) => s.visible)

@@ -71,6 +71,23 @@ export const ENTRY_FIELDS: Record<SectionType, FieldSpec[]> = {
     { key: 'language', label: 'Language', kind: 'text', half: true },
     { key: 'fluency', label: 'Fluency', kind: 'text', half: true, placeholder: 'e.g. Native' },
   ],
+  links: [
+    {
+      key: 'label',
+      label: 'Label',
+      kind: 'text',
+      half: true,
+      placeholder: 'e.g. Portfolio, LinkedIn, Blog',
+    },
+    {
+      key: 'url',
+      label: 'URL',
+      kind: 'text',
+      half: true,
+      placeholder: 'example.com/you',
+      hint: 'Any website or profile.',
+    },
+  ],
   custom: [
     { key: 'title', label: 'Title', kind: 'text', half: true },
     { key: 'subtitle', label: 'Subtitle', kind: 'text', half: true },
@@ -109,6 +126,8 @@ export function entryLabel(type: SectionType, data: EntryData): string {
       return s('title');
     case 'languages':
       return s('language');
+    case 'links':
+      return s('label') || s('url');
     case 'custom':
       return s('title');
   }

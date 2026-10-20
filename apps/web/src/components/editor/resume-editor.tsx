@@ -17,10 +17,8 @@ import {
 } from '@dnd-kit/sortable';
 import {
   DEFAULT_SECTION_TITLES,
-  SECTION_TYPES,
   addEntry,
   addSection,
-  canAddSection,
   moveEntry,
   moveSection,
   removeEntry,
@@ -32,24 +30,13 @@ import {
   updateSection,
   updateSettings,
   type ResumeContent,
-  type SectionType,
 } from '@pypr/resume-core';
-import { ensureContrast, readableTextOn } from '@pypr/templates';
-import { RESUME_ERROR_CODES, resumeDocumentSchema } from '@pypr/validation';
+import { RESUME_ERROR_CODES, resumeDocumentSchema, type ResumePhoto } from '@pypr/validation';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type CSSProperties,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { AppHeaderSlot } from '@/components/app-shell/header-slot';
-import { ArrowLeftIcon, PlusIcon } from '@/components/icons';
+import { ArrowLeftIcon } from '@/components/icons';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
@@ -59,7 +46,9 @@ import { Autosaver, ConflictError, type SaveStatus } from '@/lib/autosave';
 import { cn } from '@/lib/cn';
 import { BasicsEditor } from './basics-editor';
 import { DownloadButton } from './download-button';
+import { AddSection } from './add-section';
 import { groupIssues } from './issues';
+import { PhotoField, useResumePhoto } from './photo-field';
 import { ResumePreview } from './resume-preview';
 import { SaveStatusBadge } from './save-status';
 import { SectionEditor, type SectionActions } from './section-editor';
@@ -68,7 +57,7 @@ import { TemplatesPanel } from './templates-panel';
 type LoadState =
   | { status: 'loading' }
   | { status: 'error'; message: string }
-  | { status: 'ready'; content: ResumeContent; revision: number };
+  | { status: 'ready'; content: ResumeContent; revision: number; photo: ResumePhoto | null };
 
 export function ResumeEditor({ id }: { id: string }) {
   const [load, setLoad] = useState<LoadState>({ status: 'loading' });
@@ -77,7 +66,14 @@ export function ResumeEditor({ id }: { id: string }) {
     let cancelled = false;
     apiGet(`/api/resumes/${id}`, resumeDocumentSchema).then(
       (doc) => {
-        if (!cancelled) setLoad({ status: 'ready', content: doc.content, revision: doc.revision });
+        if (!cancelled) {
+          setLoad({
+            status: 'ready',
+            content: doc.content,
+            revision: doc.revision,
+            photo: doc.photo,
+          });
+        }
       },
       (error: unknown) => {
         if (cancelled) return;
@@ -111,19 +107,25 @@ export function ResumeEditor({ id }: { id: string }) {
       </div>
     );
   }
-  return <Editor id={id} initial={load.content} revision={load.revision} />;
+  return (
+    <Editor id={id} initial={load.content} revision={load.revision} initialPhoto={load.photo} />
+  );
 }
 
 function Editor({
   id,
   initial,
   revision,
+  initialPhoto,
 }: {
   id: string;
   initial: ResumeContent;
   revision: number;
+  initialPhoto: ResumePhoto | null;
 }) {
   const router = useRouter();
+  const photo = useResumePhoto(id, initialPhoto);
+  const photoSrc = photo.src ?? undefined;
   const [content, setContent] = useState(initial);
   const contentRef = useRef(initial);
   const [status, setStatus] = useState<SaveStatus>('saved');
@@ -132,6 +134,21 @@ function Editor({
   /** Collapsed accordion items by id ("basics" or a section id); survives reordering. */
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set());
   const [confirmLeave, setConfirmLeave] = useState(false);
+  /** A section just added: scrolled into view and focused once it has rendered. */
+  const revealSection = useRef<string | null>(null);
+
+  useEffect(() => {
+    const id = revealSection.current;
+    if (!id) return;
+    revealSection.current = null;
+    const element = document.querySelector<HTMLElement>(`[data-section-id="${CSS.escape(id)}"]`);
+    if (!element) return;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    element.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' });
+    // Its header button, so keyboard users land in the new section (the Add button they pressed
+    // may now be disabled).
+    element.querySelector<HTMLElement>('button[aria-expanded]')?.focus({ preventScroll: true });
+  }, [content]);
   const [saver] = useState(
     () =>
       new Autosaver({
@@ -188,20 +205,6 @@ function Editor({
 
   const issues = useMemo(() => groupIssues(content), [content]);
 
-  // This resume's accent recolors only the editor (see .resume-accent-scope in globals.css),
-  // with contrast-safe variants for thin indicators on each theme.
-  const accent = content.settings.accentColor;
-  const accentScope = useMemo(
-    () =>
-      ({
-        '--editor-accent': accent,
-        '--editor-accent-ink': readableTextOn(accent),
-        '--editor-accent-on-dark': ensureContrast(accent, '#11151D', 3),
-        '--editor-accent-on-light': ensureContrast(accent, '#FFFFFF', 3),
-      }) as CSSProperties,
-    [accent],
-  );
-
   const toggle = (key: string) => {
     setCollapsed((current) => {
       const next = new Set(current);
@@ -251,9 +254,11 @@ function Editor({
   });
 
   return (
-    <div className="resume-accent-scope flex h-full min-h-0 flex-col" style={accentScope}>
+    // The editor uses the app's own accent; the resume's accent colors only the resume
+    // (preview and PDF), so the two never affect each other (decision D28).
+    <div className="flex h-full min-h-0 flex-col">
       <AppHeaderSlot>
-        <div className="resume-accent-scope contents" style={accentScope}>
+        <div className="contents">
           <button
             type="button"
             onClick={() => void goBack()}
@@ -353,6 +358,7 @@ function Editor({
               onChange={(patch) => {
                 edit((c) => updateBasics(c, patch));
               }}
+              photo={<PhotoField photo={photo} name={content.basics.fullName} />}
             />
             <SortableSections
               content={content}
@@ -376,7 +382,10 @@ function Editor({
             <AddSection
               content={content}
               onAdd={(type) => {
+                const before = contentRef.current;
                 edit((c) => addSection(c, type));
+                const added = contentRef.current.sections.at(-1);
+                if (contentRef.current !== before && added) revealSection.current = added.id;
               }}
             />
           </div>
@@ -389,6 +398,7 @@ function Editor({
           >
             <TemplatesPanel
               content={content}
+              photo={photoSrc}
               onTemplate={(template) => {
                 edit((c) => updateResumeMeta(c, { template }));
               }}
@@ -409,7 +419,7 @@ function Editor({
             view === 'edit' && 'hidden lg:block',
           )}
         >
-          <ResumePreview content={content} />
+          <ResumePreview content={content} photo={photoSrc} />
         </div>
       </div>
 
@@ -570,51 +580,5 @@ function SortableSections({
         <div className="space-y-3">{children}</div>
       </SortableContext>
     </DndContext>
-  );
-}
-
-/** Add section: standard types only while they aren't on the resume yet; custom any time. */
-function AddSection({
-  content,
-  onAdd,
-}: {
-  content: ResumeContent;
-  onAdd: (type: SectionType) => void;
-}) {
-  const selectId = useId();
-  const available = SECTION_TYPES.filter((t) => canAddSection(content, t));
-  const [choice, setChoice] = useState<SectionType>('custom');
-  const type = available.includes(choice) ? choice : (available[0] ?? 'custom');
-  return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-line p-4">
-      <label htmlFor={selectId} className="text-sm text-ink-muted">
-        Add a section
-      </label>
-      <select
-        id={selectId}
-        value={type}
-        onChange={(e) => {
-          setChoice(e.target.value as SectionType);
-        }}
-        className={cn(inputClass, 'h-9 w-auto')}
-      >
-        {SECTION_TYPES.map((t) => (
-          <option key={t} value={t} disabled={!canAddSection(content, t)}>
-            {t === 'custom' ? 'Custom section' : DEFAULT_SECTION_TITLES[t]}
-            {canAddSection(content, t) ? '' : ' (added)'}
-          </option>
-        ))}
-      </select>
-      <Button
-        variant="secondary"
-        size="sm"
-        onClick={() => {
-          onAdd(type);
-        }}
-      >
-        <PlusIcon className="h-4 w-4" />
-        Add
-      </Button>
-    </div>
   );
 }

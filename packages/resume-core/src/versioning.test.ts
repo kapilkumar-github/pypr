@@ -5,14 +5,16 @@ import {
   RESUME_SCHEMA_VERSION,
   ResumeVersionError,
   mergeDuplicateStandardSections,
+  moveLegacyLinks,
   upgradeResumeContent,
 } from './versioning.js';
 
 const current = createResumeContent({ title: 'CV', template: 'classic' });
 
 describe('upgradeResumeContent', () => {
-  it('is at version 2 and validates current content as is', () => {
-    expect(RESUME_SCHEMA_VERSION).toBe(2);
+  it('is at version 3 and validates current content as is', () => {
+    expect(RESUME_SCHEMA_VERSION).toBe(3);
+    expect(upgradeResumeContent(current, 3)).toEqual(current);
     expect(upgradeResumeContent(current, 2)).toEqual(current);
     expect(upgradeResumeContent(current, 1)).toEqual(current);
   });
@@ -61,12 +63,49 @@ describe('upgradeResumeContent', () => {
   });
 
   it('refuses versions newer than the code, invalid versions, and gaps', () => {
-    expect(() => upgradeResumeContent(current, 3)).toThrow(ResumeVersionError);
+    expect(() => upgradeResumeContent(current, 4)).toThrow(ResumeVersionError);
     expect(() => upgradeResumeContent(current, 0)).toThrow(ResumeVersionError);
-    expect(() => upgradeResumeContent(current, 1, { toVersion: 3 })).toThrow(/No upgrade from/);
+    expect(() => upgradeResumeContent(current, 1, { toVersion: 4 })).toThrow(/No upgrade from/);
   });
 
   it('rejects content that is invalid after upgrading', () => {
     expect(() => upgradeResumeContent({ ...current, sections: 'nope' }, 1)).toThrow();
+  });
+});
+
+describe('version 2 -> 3: legacy link fields', () => {
+  const v2 = (links: { website?: string; linkedin?: string; github?: string }) => ({
+    ...current,
+    basics: { ...current.basics, website: '', linkedin: '', github: '', ...links },
+  });
+
+  it('moves them into a Websites & Profiles section placed first', () => {
+    const upgraded = upgradeResumeContent(
+      v2({ website: ' ada.dev ', linkedin: 'https://linkedin.com/in/ada', github: '' }),
+      2,
+    );
+    expect(upgraded.basics).toEqual(current.basics);
+    const [links, ...rest] = upgraded.sections;
+    expect(links).toMatchObject({ type: 'links', title: 'Websites & Profiles', visible: true });
+    expect(links?.entries.map((e) => e.data)).toEqual([
+      { label: 'Website', url: 'ada.dev' },
+      { label: 'LinkedIn', url: 'https://linkedin.com/in/ada' },
+    ]);
+    expect(rest).toEqual(current.sections);
+  });
+
+  it('keeps a value that is not a web address as a label, without a URL', () => {
+    const upgraded = upgradeResumeContent(v2({ github: 'ada on github' }), 2);
+    expect(upgraded.sections[0]?.entries[0]?.data).toEqual({ label: 'ada on github', url: '' });
+  });
+
+  it('adds nothing when the fields are empty, and fits a resume already at the old limit', () => {
+    expect(upgradeResumeContent(v2({}), 2).sections).toEqual(current.sections);
+    const full = {
+      ...v2({ website: 'ada.dev' }),
+      sections: Array.from({ length: 20 }, () => createSection('custom')),
+    };
+    expect(upgradeResumeContent(full, 2).sections).toHaveLength(21);
+    expect(moveLegacyLinks(null)).toBeNull();
   });
 });

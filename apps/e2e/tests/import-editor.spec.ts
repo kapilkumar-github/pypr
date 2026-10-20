@@ -29,6 +29,13 @@ test('import a PDF, review it, create the resume and edit it', async ({ page }) 
   const education = page.getByRole('region', { name: 'Education' });
   await education.getByRole('button', { name: 'BSc, Example University' }).click();
   await expect(education.getByLabel('Start')).toHaveValue('2014');
+  // Any website or profile the parser found, as a link.
+  await expect(
+    page.getByRole('region', { name: 'Websites & Profiles' }).getByText('Portfolio'),
+  ).toBeVisible();
+  await expect(
+    page.frameLocator('iframe[title="Resume preview"]').getByRole('link', { name: /Portfolio/ }),
+  ).toHaveAttribute('href', 'https://jordan.design/');
 
   await page.getByRole('button', { name: 'Back to resumes' }).click();
   await expect(page.getByRole('link', { name: 'Jordan (imported)', exact: true })).toBeVisible();
@@ -81,14 +88,21 @@ test('editor: full height, tabs, accordions, unique sections, drag-and-drop orde
   await basicsToggle.click();
   await expect(page.getByLabel('Full name')).toHaveValue('Ada Lovelace');
 
-  // Standard sections only once; custom sections as many as wanted.
-  const typeSelect = page.getByLabel('Add a section');
-  await expect(typeSelect.locator('option', { hasText: 'Experience (added)' })).toBeDisabled();
-  await typeSelect.selectOption('custom');
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await typeSelect.selectOption('custom');
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  // Add section: a two-column grid of buttons. Standard sections only once; custom sections as
+  // many as wanted, each focused as it's added.
+  const addGrid = page.getByRole('region', { name: 'Add a section' });
+  const addedExperience = addGrid.getByRole('button', { name: 'Experience (already added)' });
+  await expect(addedExperience).toBeDisabled();
+  const first = await addedExperience.boundingBox();
+  const second = await addGrid
+    .getByRole('button', { name: 'Education (already added)' })
+    .boundingBox();
+  expect(first && second && second.y === first.y && second.x > first.x).toBe(true);
+  const addCustom = addGrid.getByRole('button', { name: 'Add Custom section' });
+  await addCustom.click();
   const customs = page.getByRole('region', { name: 'Additional' });
+  await expect(customs.getByRole('button', { name: /^Additional 0 entries/ })).toBeFocused();
+  await addCustom.click();
   await expect(customs).toHaveCount(2);
   await customs.first().getByLabel('Section title').fill('Volunteering');
   await page.getByRole('region', { name: 'Additional' }).getByLabel('Section title').fill('Talks');
@@ -137,6 +151,28 @@ test('editor: full height, tabs, accordions, unique sections, drag-and-drop orde
   await page.reload();
   await expect.poll(order).toEqual(['Talks', 'Experience', 'Skills', 'Education', 'Volunteering']);
   await expect(page.getByLabel('Full name')).toHaveValue('Ada Lovelace');
+
+  // A removed standard section can be added again, and goes to the end.
+  await page.getByRole('button', { name: 'Delete Education' }).click();
+  await page
+    .getByRole('region', { name: 'Education' })
+    .getByRole('button', { name: 'Delete', exact: true })
+    .click();
+  await addGrid.getByRole('button', { name: 'Add Education' }).click();
+  await expect.poll(order).toEqual(['Talks', 'Experience', 'Skills', 'Volunteering', 'Education']);
+  await expect(addGrid.getByRole('button', { name: 'Education (already added)' })).toBeDisabled();
+  await expect(page.getByText('All changes saved')).toBeVisible();
+
+  // Still two columns on a phone, without sideways scrolling.
+  await page.setViewportSize({ width: 360, height: 780 });
+  await addGrid.scrollIntoViewIfNeeded();
+  const narrow = await addGrid.getByRole('button', { name: 'Add Projects' }).boundingBox();
+  const narrowSkills = await addGrid
+    .getByRole('button', { name: 'Skills (already added)' })
+    .boundingBox();
+  expect(narrow && narrowSkills && narrow.y === narrowSkills.y).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= 360)).toBe(true);
+  await page.setViewportSize({ width: 1440, height: 900 });
 
   // Back to resumes.
   await page.getByRole('button', { name: 'Back to resumes' }).click();

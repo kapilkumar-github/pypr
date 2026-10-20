@@ -217,6 +217,13 @@ function EntryField({
           placeholder={field.placeholder}
           error={error}
           value={text}
+          // Web addresses: URL keyboard on phones, no auto-capitalising or autocorrect.
+          {...(field.key === 'url' && {
+            inputMode: 'url' as const,
+            autoCapitalize: 'none',
+            autoCorrect: 'off',
+            spellCheck: false,
+          })}
           onChange={(e) => {
             onChange(e.target.value);
           }}

@@ -79,11 +79,18 @@ export const parsedResumeSchema = z.strictObject({
     email: text,
     phone: text,
     location: text,
-    website: text,
-    linkedin: text,
-    github: text,
     summary: text,
   }),
+  links: z
+    .array(
+      z.strictObject({
+        label: text.describe(
+          'As written, or the site name, e.g. "Portfolio", "LinkedIn", "Behance"',
+        ),
+        url: z.string().describe('The address exactly as written'),
+      }),
+    )
+    .describe('Every website and online profile, in document order; never email addresses'),
   section_titles: z
     .strictObject({
       experience: text,

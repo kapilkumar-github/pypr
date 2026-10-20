@@ -10,25 +10,15 @@ import {
   DENSITY_SCALE,
   FONT_STACKS,
   TEMPLATES,
+  ensureContrast,
   isHexColor,
-  readableTextOn,
   renderResumeHtml,
 } from '@pypr/templates';
-import { useDeferredValue, useId, useMemo, useState } from 'react';
+import { useDeferredValue, useId, useMemo } from 'react';
+import { AccentPicker } from '@/components/accent-picker';
 import { CheckIcon } from '@/components/icons';
 import { inputClass } from '@/components/ui/field';
 import { cn } from '@/lib/cn';
-
-/** Curated accents, balanced for the dark workspace (all take dark text). */
-export const ACCENT_PRESETS = [
-  { name: 'Neon lime', value: '#B7FF3C' },
-  { name: 'Electric violet', value: '#A78BFA' },
-  { name: 'Cyan', value: '#22D3EE' },
-  { name: 'Blue', value: '#60A5FA' },
-  { name: 'Coral', value: '#FF7A6B' },
-  { name: 'Amber', value: '#FBBF24' },
-  { name: 'Pink', value: '#F472B6' },
-] as const;
 
 const THUMB_WIDTH = 168;
 const PAGE_WIDTH = 794; // A4 at 96 dpi
@@ -39,8 +29,11 @@ export function TemplatesPanel({
   content,
   onTemplate,
   onSettings,
+  photo,
 }: {
   content: ResumeContent;
+  /** The resume's photo as a data: URI, for the thumbnails. */
+  photo?: string | undefined;
   onTemplate: (template: string) => void;
   onSettings: (patch: Partial<ResumeSettings>) => void;
 }) {
@@ -63,6 +56,7 @@ export function TemplatesPanel({
               description={template.description}
               selected={content.template === template.id}
               content={content}
+              photo={photo}
               onSelect={() => {
                 onTemplate(template.id);
               }}
@@ -79,11 +73,14 @@ export function TemplatesPanel({
           <p className="mt-1 text-xs text-ink-subtle">Applies to this resume only.</p>
         </div>
         <AccentPicker
+          legend="Resume accent"
           value={content.settings.accentColor}
           onChange={(accentColor) => {
             onSettings({ accentColor });
           }}
-        />
+        >
+          <ResumeAccentSample accent={content.settings.accentColor} />
+        </AccentPicker>
         <FontPicker
           value={content.settings.font}
           onChange={(font) => {
@@ -107,6 +104,7 @@ function TemplateCard({
   description,
   selected,
   content,
+  photo,
   onSelect,
 }: {
   id: string;
@@ -114,11 +112,15 @@ function TemplateCard({
   description: string;
   selected: boolean;
   content: ResumeContent;
+  photo: string | undefined;
   onSelect: () => void;
 }) {
   // A real thumbnail: this resume rendered with this template and its settings.
   const deferred = useDeferredValue(content);
-  const html = useMemo(() => renderResumeHtml({ ...deferred, template: id }), [deferred, id]);
+  const html = useMemo(
+    () => renderResumeHtml({ ...deferred, template: id }, { photo }),
+    [deferred, id, photo],
+  );
   const scale = THUMB_WIDTH / PAGE_WIDTH;
   return (
     <button
@@ -156,148 +158,6 @@ function TemplateCard({
       </div>
       <p className="mt-1 text-xs leading-relaxed text-ink-subtle">{description}</p>
     </button>
-  );
-}
-
-function AccentPicker({ value, onChange }: { value: string; onChange: (hex: string) => void }) {
-  const groupId = useId();
-  const isPreset = ACCENT_PRESETS.some((p) => p.value === value.toUpperCase());
-  const [customOpen, setCustomOpen] = useState(!isPreset);
-  const [draft, setDraft] = useState(value);
-  const [error, setError] = useState<string | null>(null);
-  const showCustom = customOpen || !isPreset;
-
-  const applyDraft = (raw: string) => {
-    const next = raw.trim().startsWith('#') ? raw.trim() : `#${raw.trim()}`;
-    setDraft(raw);
-    if (isHexColor(next)) {
-      setError(null);
-      onChange(next.toUpperCase());
-    } else {
-      setError('Use a 6-digit hex color, like #B7FF3C.');
-    }
-  };
-
-  const swatch = (selected: boolean) =>
-    cn(
-      'relative flex size-8 items-center justify-center rounded-full border transition-transform peer-focus-visible:ring-2 peer-focus-visible:ring-highlight peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface',
-      selected
-        ? 'scale-110 border-ink ring-2 ring-ink/70 ring-offset-2 ring-offset-surface'
-        : 'border-ink/20 hover:scale-105',
-    );
-
-  return (
-    <fieldset>
-      <legend className="text-sm font-medium">Accent color</legend>
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        {ACCENT_PRESETS.map((preset) => {
-          const selected = !customOpen && value.toUpperCase() === preset.value;
-          return (
-            <label key={preset.value} title={preset.name} className="cursor-pointer">
-              <input
-                type="radio"
-                name={groupId}
-                className="peer sr-only"
-                checked={selected}
-                onChange={() => {
-                  setCustomOpen(false);
-                  setError(null);
-                  setDraft(preset.value);
-                  onChange(preset.value);
-                }}
-              />
-              <span className={swatch(selected)} style={{ backgroundColor: preset.value }}>
-                {selected && (
-                  <CheckIcon className="size-4" style={{ color: readableTextOn(preset.value) }} />
-                )}
-              </span>
-              <span className="sr-only">{preset.name}</span>
-            </label>
-          );
-        })}
-        <label title="Custom color" className="cursor-pointer">
-          <input
-            type="radio"
-            name={groupId}
-            className="peer sr-only"
-            checked={showCustom}
-            onChange={() => {
-              setCustomOpen(true);
-              setDraft(value);
-            }}
-          />
-          <span
-            className={swatch(showCustom)}
-            style={{
-              background: showCustom
-                ? value
-                : 'conic-gradient(#ff6b6b, #fbbf24, #b7ff3c, #22d3ee, #60a5fa, #a78bfa, #f472b6, #ff6b6b)',
-            }}
-          >
-            {showCustom && (
-              <CheckIcon className="size-4" style={{ color: readableTextOn(value) }} />
-            )}
-          </span>
-          <span className="sr-only">Custom</span>
-        </label>
-      </div>
-      <p className="mt-2 text-xs text-ink-muted" aria-live="polite">
-        {showCustom
-          ? 'Custom'
-          : (ACCENT_PRESETS.find((p) => p.value === value.toUpperCase())?.name ?? 'Custom')}{' '}
-        · <span className="font-mono">{value.toUpperCase()}</span>
-      </p>
-
-      {showCustom && (
-        <div className="mt-3 flex flex-wrap items-start gap-2">
-          <input
-            type="color"
-            aria-label="Pick a custom accent color"
-            value={isHexColor(value) ? value.toLowerCase() : '#b7ff3c'}
-            onChange={(e) => {
-              applyDraft(e.target.value);
-            }}
-            className="h-9 w-12 cursor-pointer rounded-md border border-line bg-canvas p-1"
-          />
-          <div>
-            <input
-              aria-label="Custom accent hex code"
-              value={draft}
-              maxLength={7}
-              spellCheck={false}
-              aria-invalid={error ? true : undefined}
-              aria-describedby={error ? `${groupId}-error` : undefined}
-              onChange={(e) => {
-                applyDraft(e.target.value);
-              }}
-              className={cn(inputClass, 'h-9 w-28 font-mono uppercase')}
-            />
-            {error && (
-              <p id={`${groupId}-error`} className="mt-1 text-xs text-danger">
-                {error}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Live sample of the accent as the app and the resume use it. */}
-      <div
-        className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-line bg-canvas p-3"
-        aria-hidden="true"
-      >
-        <span
-          className="rounded-md px-3 py-1.5 text-xs font-medium"
-          style={{ backgroundColor: value, color: readableTextOn(value) }}
-        >
-          Primary action
-        </span>
-        <span className="h-4 w-px bg-line" />
-        <span className="text-xs text-ink-muted">
-          Resume headings use a print-safe shade of this color.
-        </span>
-      </div>
-    </fieldset>
   );
 }
 
@@ -384,5 +244,29 @@ function DensityPicker({
         ))}
       </div>
     </fieldset>
+  );
+}
+
+/**
+ * The accent as the resume prints it: a section heading on white paper, in the print-safe shade.
+ * It colors only this resume, never the Pypr interface around it.
+ */
+function ResumeAccentSample({ accent }: { accent: string }) {
+  const safe = isHexColor(accent) ? accent : '#B7FF3C';
+  return (
+    <div className="mt-4 rounded-lg border border-line bg-white p-3" aria-hidden="true">
+      <p
+        className="border-b pb-1 text-[10px] font-bold tracking-[0.12em] uppercase"
+        style={{
+          color: ensureContrast(safe, '#FFFFFF', 4.5),
+          borderColor: ensureContrast(safe, '#FFFFFF', 3),
+        }}
+      >
+        Experience
+      </p>
+      <p className="mt-1.5 text-[11px] text-zinc-600">
+        Resume headings, dividers and bullets use a print-safe shade of this color.
+      </p>
+    </div>
   );
 }
