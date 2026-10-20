@@ -13,8 +13,9 @@ async function bootstrap(): Promise<void> {
 
   const config = app.get<ConfigService<Env, true>>(ConfigService);
   const port = config.get('PORT', { infer: true });
-  await app.listen(port);
-  Logger.log(`API listening on http://localhost:${String(port)}/${API_PREFIX}`, 'Bootstrap');
+  const host = config.get('HOST', { infer: true });
+  await app.listen(port, host);
+  Logger.log(`API listening on http://${host}:${String(port)}/${API_PREFIX}`, 'Bootstrap');
 }
 
 bootstrap().catch((error: unknown) => {

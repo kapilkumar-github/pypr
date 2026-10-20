@@ -1,0 +1,30 @@
+# Pypr API on the home server (decision D26). Lives in ~/pypr-api on the server, next to:
+#   api.env  production settings and secrets (chmod 600, never in git; see api.env.example)
+#   .env     only PYPR_API_TAG / PYPR_API_PREVIOUS_TAG, written by scripts/deploy-api.sh
+# The existing Cloudflare Tunnel routes api.pypr.work to http://127.0.0.1:8081.
+name: pypr
+
+services:
+  api:
+    image: pypr-api:${PYPR_API_TAG:?run scripts/deploy-api.sh}
+    container_name: pypr-api
+    restart: unless-stopped
+    # Host networking: the API binds 127.0.0.1:8081 (HOST/PORT in api.env), so only the local
+    # tunnel can reach it, and the IPv6-only Supabase host is reachable without Docker IPv6 setup.
+    network_mode: host
+    env_file: ./api.env
+    environment:
+      HOME: /tmp # Chromium writes its profile under HOME; the image filesystem is read-only
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '5'

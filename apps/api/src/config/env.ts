@@ -29,6 +29,8 @@ const trustProxy = z
 const rawEnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
+  /** Address to listen on. 127.0.0.1 keeps the API reachable only through a local proxy/tunnel. */
+  HOST: z.string().min(1).default('0.0.0.0'),
   DATABASE_URL: postgresUrl,
   /** HMAC key for access tokens (HS256). At least 32 characters of randomness. */
   JWT_ACCESS_SECRET: z.string().min(32, 'must be at least 32 characters'),

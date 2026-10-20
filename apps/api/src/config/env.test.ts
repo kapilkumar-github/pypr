@@ -12,6 +12,7 @@ describe('validateEnv', () => {
       ...required,
       NODE_ENV: 'development',
       PORT: 4000,
+      HOST: '0.0.0.0',
       WEB_ORIGINS: ['http://localhost:3000'],
       TRUST_PROXY: 'loopback',
       APP_URL: 'http://localhost:3000',
