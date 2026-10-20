@@ -1,5 +1,11 @@
 # Deployment
 
+> **Current production setup (2026-10-20, decision D26):** the API runs on the home server
+> (`homeserver`, Ubuntu 24.04) in Docker, bound to `127.0.0.1:8081`, behind the existing
+> Cloudflare Tunnel that routes `api.pypr.work` there. The web app is on Vercel (`pypr.work`),
+> the database on Supabase. See [Home server](#home-server) below; the rest of this guide
+> describes the general setup.
+
 How to run Pypr in production. Pypr is three parts: the web app (Next.js), the API (NestJS, with
 headless Chromium for PDFs) and PostgreSQL (Supabase).
 
@@ -117,3 +123,46 @@ instead.
 - Uptime check on `https://app.pypr.work/api/health` (exercises web, proxy, API and database).
 - Alert on API logs containing `UnhandledError`, `Verification email failed`, `PDF failed` and
   `Refresh token reuse detected` (the last one can mean a stolen token).
+
+## Home server
+
+**Layout on the server (`~/pypr-api`):**
+
+| File          | What it is                                                                                            |
+| ------------- | ----------------------------------------------------------------------------------------------------- |
+| `compose.yml` | Copied from `deploy/home-server/compose.yml` by the deploy script                                     |
+| `api.env`     | Production settings and secrets (`chmod 600`, never in git; see `deploy/home-server/api.env.example`) |
+| `.env`        | Only `PYPR_API_TAG` / `PYPR_API_PREVIOUS_TAG` (written by the deploy script)                          |
+
+**Ingress.** A Cloudflare-managed tunnel (`cloudflared.service`, token-based) routes
+`api.pypr.work` → `http://127.0.0.1:8081` and `ai.pypr.work` → LiteLLM. Its routes are edited in
+the Cloudflare dashboard (Zero Trust → Networks → Tunnels), not on the server. The API binds
+localhost only, so it isn't reachable from the LAN or the internet except through the tunnel.
+
+**Deploy** (from a clean checkout on the Mac, with SSH alias `homeserver`):
+
+```sh
+scripts/deploy-api.sh            # build pypr-api:<commit>, copy it over SSH, start, wait until healthy
+scripts/deploy-api.sh rollback   # switch back to the previous image
+```
+
+**Migrations** are never run by the deploy. Review and apply them first, from the Mac:
+`DATABASE_URL=<production url> pnpm --filter @pypr/api db:status`, then `db:deploy`.
+
+**Operate:**
+
+```sh
+ssh homeserver 'cd ~/pypr-api && docker compose ps'            # status and health
+ssh homeserver 'docker logs --tail 100 -f pypr-api'           # logs (rotated: 5 × 10 MB)
+ssh homeserver 'cd ~/pypr-api && docker compose restart'       # restart
+curl https://api.pypr.work/api/health                          # end to end, through Cloudflare
+```
+
+The container restarts on crashes (`unless-stopped`) and starts with Docker at boot. Docker is
+the snap package, which has two quirks: `init: true` and `no-new-privileges` both make every
+program fail to start ("operation not permitted"), so the image runs `tini` itself and the
+container relies on a non-root user, dropped capabilities and a read-only filesystem instead.
+
+**Changing a secret:** edit `~/pypr-api/api.env` on the server, then
+`docker compose up -d --force-recreate`. Values containing `&` must not go through `sed`
+replacements unescaped.

@@ -362,3 +362,24 @@ injected. Literal `*` is escaped.
 "Selected" badge (icon + text), then the design settings: accent swatches (Neon lime, Electric
 violet, Cyan, Blue, Coral, Amber, Pink) plus Custom (color picker + validated hex), font,
 density.
+
+## D26. API on the home server behind the existing Cloudflare Tunnel (2026-10-20)
+
+- **Repository:** the code lives in `github.com/kapilkumar-github/pypr` (renamed from
+  `pypr-ui`). `main` is the new codebase (fast-forwarded on top of the old main, no force
+  push), `main-old` keeps the previous main (`6900695`), `dev` follows `main`; `qa` and `staging`
+  were deleted after confirming they held no unique commits.
+- **Runtime:** Docker Compose on the home server with host networking, bound to
+  `127.0.0.1:8081`, which the already-running Cloudflare Tunnel routes `api.pypr.work` to. No
+  router or Cloudflare change was needed. Host networking also gives the container the server's
+  IPv6, so it uses Supabase's direct (IPv6-only) host.
+- **Images** are built on the Mac and copied over SSH, tagged with the commit; no registry and no
+  GitHub credentials on the server. `scripts/deploy-api.sh rollback` swaps to the previous tag.
+- **Secrets** sit only in `~/pypr-api/api.env` (600). The production JWT secret was generated on
+  the server and differs from development.
+- **Proxy chain:** browser → Vercel (`pypr.work` rewrite) → Cloudflare → tunnel → API, so
+  `TRUST_PROXY=2`. Known gap: someone calling `api.pypr.work` directly can put a fake
+  `X-Forwarded-For` first and dodge per-IP rate limits. Fix later with Cloudflare rate limiting
+  or a shared header that only the Vercel rewrite sends.
+- The old Go backend (`pypr-api.service`, `~/pypr-go`) is retired: it should be disabled; its
+  files stay until the owner approves removing them.
