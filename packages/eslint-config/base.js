@@ -1,40 +1,34 @@
-import babelParser from "@babel/eslint-parser";
-import js from "@eslint/js";
-import eslintConfigPrettier from "eslint-config-prettier";
-import turboPlugin from "eslint-plugin-turbo";
-import onlyWarn from "eslint-plugin-only-warn";
+// Shared flat ESLint config for TypeScript packages.
+// Type-aware rules use the package's own tsconfig.json via the project service.
+import js from '@eslint/js';
+import prettier from 'eslint-config-prettier';
+import globals from 'globals';
+import tseslint from 'typescript-eslint';
 
-/**
- * A shared ESLint configuration for the repository.
- *
- * @type {import("eslint").Linter.Config[]}
- * */
-export const config = [
+export const base = tseslint.config(
+  { ignores: ['dist/**', 'coverage/**', '.turbo/**'] },
   js.configs.recommended,
-  eslintConfigPrettier,
+  ...tseslint.configs.strictTypeChecked,
   {
     languageOptions: {
-      parser: babelParser,
+      globals: globals.node,
       parserOptions: {
-        requireConfigFile: false,
-        babelOptions: {
-          presets: ["@babel/preset-typescript"],
-        },
+        projectService: true,
       },
     },
-    plugins: {
-      turbo: turboPlugin,
-    },
     rules: {
-      "turbo/no-undeclared-env-vars": "warn",
+      '@typescript-eslint/consistent-type-imports': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
     },
   },
   {
-    plugins: {
-      onlyWarn,
-    },
+    files: ['**/*.js', '**/*.mjs'],
+    ...tseslint.configs.disableTypeChecked,
   },
-  {
-    ignores: ["dist/**"],
-  },
-];
+  prettier,
+);
+
+export default base;

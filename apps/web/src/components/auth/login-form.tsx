@@ -1,175 +1,129 @@
-"use client";
+'use client';
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { AUTH_ERROR_CODES, loginRequestSchema } from '@pypr/validation';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState, type SyntheticEvent } from 'react';
+import { PasswordField } from '@/components/auth/password-field';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Field } from '@/components/ui/field';
+import { ApiError, apiRequest } from '@/lib/api';
+import { useRedirectIfSignedIn } from '@/lib/session';
 
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import PasswordInput from "../forms/password-input";
-import { authServiceInstance, authService } from "@/features/auth/services";
-import * as AuthSchema from "@/schemas/auth.schema";
+type Problem = { kind: 'error'; message: string } | { kind: 'unverified' } | null;
 
-type SigninFormParams = {
-    onSignup: () => void;
-};
+export function LoginForm({
+  initialEmail,
+  notice,
+  next,
+}: {
+  initialEmail: string;
+  notice: 'exists' | 'verified' | null;
+  next: string;
+}) {
+  const router = useRouter();
+  useRedirectIfSignedIn(next);
+  const [email, setEmail] = useState(initialEmail);
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<Problem>(null);
+  const [resent, setResent] = useState(false);
 
-const SigninForm = ({ onSignup }: SigninFormParams) => {
-    const {
-        register,
-        handleSubmit,
-        setValue,
-        watch,
-        formState: { errors },
-    } = useForm<AuthSchema.LoginFormValues>({
-        resolver: zodResolver(AuthSchema.loginSchema),
-        defaultValues: {
-            email: "",
-            password: "",
-            rememberMe: false,
-        },
-    });
+  async function submit(event: SyntheticEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const parsed = loginRequestSchema.safeParse({ email, password });
+    if (!parsed.success) {
+      setProblem({ kind: 'error', message: 'Enter your email and password.' });
+      return;
+    }
+    setBusy(true);
+    setProblem(null);
+    try {
+      await apiRequest('/api/auth/login', { method: 'POST', body: parsed.data });
+      router.replace(next);
+    } catch (error) {
+      if (error instanceof ApiError && error.code === AUTH_ERROR_CODES.emailNotVerified) {
+        setProblem({ kind: 'unverified' });
+      } else {
+        setProblem({
+          kind: 'error',
+          message: error instanceof Error ? error.message : 'Could not sign in.',
+        });
+      }
+      setBusy(false);
+    }
+  }
 
-    const rememberMe = watch("rememberMe");
+  async function resend() {
+    await apiRequest('/api/auth/resend-verification', {
+      method: 'POST',
+      body: { email: email.trim() },
+    }).catch(() => undefined);
+    setResent(true);
+  }
 
-    const onSubmit = async (values: AuthSchema.LoginFormValues) => {
-        try {
-            const req: authService.LoginRequest = {
-                emailId: values.email,
-                password: values.password,
-            };
+  return (
+    <section>
+      <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
+      <p className="mt-1 text-sm text-ink-muted">Welcome back to Pypr.</p>
 
-            const response = await authServiceInstance.login(req);
+      {notice === 'exists' && (
+        <Alert className="mt-6">
+          You already have an account with this email. Sign in instead.
+        </Alert>
+      )}
 
-            if (response != null) {
-                // Redirect to dashboard or home page after successful login
-                window.location.href = "/resumes"; // or any other page you want to redirect to
-            }
-        } catch (error) {
-            console.error(error);
-        }
-    };
+      <form className="mt-6 space-y-4" onSubmit={(e) => void submit(e)} noValidate>
+        <Field
+          label="Email"
+          type="email"
+          autoComplete="email"
+          required
+          value={email}
+          onChange={(e) => {
+            setEmail(e.target.value);
+          }}
+        />
+        <PasswordField
+          label="Password"
+          autoComplete="current-password"
+          required
+          value={password}
+          onChange={(e) => {
+            setPassword(e.target.value);
+          }}
+        />
 
-    return (
-        <div className="relative w-full max-w-md">
-            {/* Subtle glow */}
-            <div className="pointer-events-none absolute -inset-10 -z-10 rounded-full bg-white/[0.025] blur-3xl" />
+        {problem?.kind === 'error' && <Alert tone="error">{problem.message}</Alert>}
+        {problem?.kind === 'unverified' && (
+          <Alert tone="error">
+            Verify your email before signing in.{' '}
+            {resent ? (
+              <span>A new link is on its way.</span>
+            ) : (
+              <button
+                type="button"
+                className="font-medium underline underline-offset-2"
+                onClick={() => void resend()}
+              >
+                Send a new link
+              </button>
+            )}
+          </Alert>
+        )}
 
-            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.035] p-7 shadow-2xl backdrop-blur-xl sm:p-8">
-                {/* Header */}
-                <div className="text-center">
-                    <h1 className="text-3xl font-semibold tracking-[-0.03em] text-white">
-                        Welcome back
-                    </h1>
+        <Button type="submit" className="w-full" disabled={busy}>
+          {busy ? 'Signing in…' : 'Sign in'}
+        </Button>
+      </form>
 
-                    <p className="mt-2 text-sm leading-6 text-zinc-400">
-                        Sign in to continue building your resume.
-                    </p>
-                </div>
-
-                <form onSubmit={handleSubmit(onSubmit)} className="mt-8">
-                    {/* Email */}
-                    <div className="space-y-2">
-                        <Label
-                            htmlFor="email"
-                            className="text-xs font-medium text-zinc-300"
-                        >
-                            Email
-                        </Label>
-
-                        <Input
-                            id="email"
-                            type="email"
-                            placeholder="you@example.com"
-                            {...register("email")}
-                            className="h-11 border-white/[0.1] bg-white/[0.04] text-white placeholder:text-zinc-600 focus-visible:border-white/20 focus-visible:ring-white/10"
-                        />
-
-                        {errors.email && (
-                            <p className="text-xs text-red-400">
-                                {errors.email.message}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Password */}
-                    <div className="mt-5 space-y-2">
-                        <Label
-                            htmlFor="password"
-                            className="text-xs font-medium text-zinc-300"
-                        >
-                            Password
-                        </Label>
-
-                        <PasswordInput
-                            id="password"
-                            {...register("password")}
-                        />
-
-                        {errors.password && (
-                            <p className="text-xs text-red-400">
-                                {errors.password.message}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Remember / Forgot */}
-                    <div className="mt-4 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <Checkbox
-                                id="remember-me"
-                                checked={rememberMe}
-                                onCheckedChange={(checked) =>
-                                    setValue("rememberMe", checked === true)
-                                }
-                                className="border-white/20 data-[state=checked]:border-white data-[state=checked]:bg-white data-[state=checked]:text-black"
-                            />
-
-                            <label
-                                htmlFor="remember-me"
-                                className="cursor-pointer text-xs text-zinc-400"
-                            >
-                                Remember me
-                            </label>
-                        </div>
-
-                        <button
-                            type="button"
-                            className="text-xs font-medium text-zinc-300 transition hover:text-white"
-                        >
-                            Forgot password?
-                        </button>
-                    </div>
-
-                    {/* Submit */}
-                    <Button
-                        type="submit"
-                        size="lg"
-                        className="mt-6 h-11 w-full bg-white font-medium text-black transition hover:bg-zinc-200"
-                    >
-                        Sign in
-                        <span className="ml-1">→</span>
-                    </Button>
-                </form>
-
-                {/* Signup */}
-                <div className="mt-7 flex items-center justify-center gap-1.5">
-                    <p className="text-xs text-zinc-500">
-                        Don't have an account?
-                    </p>
-
-                    <button
-                        onClick={onSignup}
-                        type="button"
-                        className="text-xs font-medium text-white underline-offset-4 transition hover:text-zinc-300 hover:underline"
-                    >
-                        Sign up
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-export default SigninForm;
+      <p className="mt-6 text-center text-sm text-ink-muted">
+        New to Pypr?{' '}
+        <Link href="/register" className="font-medium text-ink underline-offset-4 hover:underline">
+          Create an account
+        </Link>
+      </p>
+    </section>
+  );
+}

@@ -1,0 +1,143 @@
+@import 'tailwindcss';
+
+/* Design tokens. Components use these names (bg-canvas, text-ink-muted, ...),
+   never raw palette values, so the look stays consistent across pages and themes.
+
+   Dark is the default theme. `<html data-theme="light">` switches to light; the
+   inline script in layout.tsx sets that attribute before first paint (see lib/theme.ts). */
+@theme {
+  /* Geist (Vercel's open-source typeface) for the interface; the logo keeps Space Grotesk. */
+  --font-sans:
+    var(--font-geist), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display: var(--font-space-grotesk), var(--font-geist), ui-sans-serif, sans-serif;
+
+  /* Vercel-inspired developer palette (decision D25). Dark is the CSS default. */
+  --color-canvas: #090b10; /* app background */
+  --color-surface: #11151d; /* panels */
+  --color-elevated: #191d25; /* menus, dialogs, raised controls */
+  --color-sidebar: #090b10;
+  --color-ink: #f4f7fa;
+  --color-ink-muted: #a1a8b5;
+  --color-ink-subtle: #8993a3;
+  --color-line: #272d37;
+
+  /* Accent: neon lime, used for fills with dark text, and for thin indicators */
+  --color-primary: #b7ff3c;
+  --color-primary-ink: #090b10;
+  --color-secondary: #191d25;
+  --color-accent: #b7ff3c;
+  --color-accent-ink: #090b10;
+  /* Focus rings, selected tabs and other thin indicators */
+  --color-highlight: #b7ff3c;
+  --color-glow: rgb(183 255 60 / 22%);
+  --color-danger: #f87171;
+  --color-success: #b7ff3c;
+  --color-warning: #fbbf24;
+
+  /* The resume "sheet of paper" stays light in both themes */
+  --color-paper: oklch(0.92 0.004 286.32);
+  --color-paper-edge: oklch(0.871 0.006 286.286 / 60%);
+  --color-paper-ink: oklch(0.21 0.006 285.885);
+  --color-paper-muted: oklch(0.705 0.015 286.067);
+  --color-paper-line: oklch(0.871 0.006 286.286);
+
+  --shadow-paper: 0 30px 80px oklch(0 0 0 / 60%);
+  --shadow-float: 0 20px 40px oklch(0 0 0 / 50%);
+
+  --animate-pen-float: pen-float 5s ease-in-out infinite;
+
+  @keyframes pen-float {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0);
+    }
+    50% {
+      transform: translate3d(-30px, 0, 0);
+    }
+  }
+}
+
+[data-theme='light'] {
+  --color-canvas: #fafafa;
+  --color-surface: #ffffff;
+  --color-elevated: #ffffff;
+  --color-sidebar: #fafafa;
+  --color-ink: #0a0a0a;
+  --color-ink-muted: #52525b;
+  --color-ink-subtle: #6b7280;
+  --color-line: #e4e4e7;
+
+  /* Lime stays a fill with dark text; thin lines use ink, since lime lines vanish on white. */
+  --color-primary: #b7ff3c;
+  --color-primary-ink: #090b10;
+  --color-secondary: #f4f4f5;
+  --color-accent: #b7ff3c;
+  --color-accent-ink: #090b10;
+  --color-highlight: #0a0a0a;
+  --color-glow: rgb(101 163 13 / 25%);
+  --color-danger: #dc2626;
+  --color-success: #15803d;
+  --color-warning: #b45309;
+
+  --color-paper: oklch(1 0 0);
+  --color-paper-edge: oklch(0.92 0.004 286.32);
+  --color-paper-line: oklch(0.92 0.004 286.32);
+
+  --shadow-paper: 0 30px 60px oklch(0 0 0 / 14%);
+  --shadow-float: 0 16px 32px oklch(0 0 0 / 18%);
+}
+
+/* The resume editor recolors only itself with the resume's own accent (settings.accentColor);
+   --editor-* values are computed in the editor for contrast. */
+.resume-accent-scope {
+  --color-primary: var(--editor-accent);
+  --color-primary-ink: var(--editor-accent-ink);
+  --color-accent: var(--editor-accent);
+  --color-highlight: var(--editor-accent-on-dark);
+  --color-success: var(--editor-accent-on-dark);
+}
+[data-theme='light'] .resume-accent-scope {
+  --color-highlight: var(--editor-accent-on-light);
+  --color-success: var(--editor-accent-on-light);
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  html[data-theme='light'] {
+    color-scheme: light;
+  }
+
+  body {
+    @apply bg-canvas font-sans text-ink antialiased;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pen-float {
+    animation: none;
+  }
+}
+
+/* Rich-text editor content (Tiptap): lists need visible markers. */
+.rich-editor ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.rich-editor ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+.rich-editor p + p,
+.rich-editor p + ul,
+.rich-editor p + ol,
+.rich-editor ul + p,
+.rich-editor ol + p {
+  margin-top: 0.5rem;
+}
+.rich-editor li::marker {
+  color: var(--color-ink-subtle);
+}

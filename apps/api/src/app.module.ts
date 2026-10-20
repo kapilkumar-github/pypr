@@ -1,29 +1,36 @@
 import { Module } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';
-import { RequestTimingInterceptor } from './common/interceptors/request-timing.interceptor.js';
-import { AppController } from './app.controller.js';
-import { AppService } from './app.service.js';
-import { HealthModule } from './health/health.module.js';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module.js';
-import { PrismaModule } from './prisma/prisma.module.js';
+import { validateEnv } from './config/env.js';
+import { DatabaseModule } from './database/database.module.js';
+import { HealthModule } from './health/health.module.js';
+import { EmailModule } from './integrations/email/email.module.js';
+import { PdfModule } from './integrations/pdf/pdf.module.js';
+import { ResumeParserModule } from './integrations/resume-parser/resume-parser.module.js';
+import { ResumeImportModule } from './resume-import/resume-import.module.js';
+import { ResumesModule } from './resumes/resumes.module.js';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      cache: true,
+      // Tests get their whole config from vitest.config.ts, never from a developer's .env.
+      ignoreEnvFile: process.env.NODE_ENV === 'test',
+      validate: validateEnv,
     }),
-    PrismaModule,
-    HealthModule,
+    // Rate limits per client IP, in memory (one API instance). Routes opt in with ThrottlerGuard:
+    // auth routes and PDF export. 10 per minute unless a route says otherwise.
+    ThrottlerModule.forRoot({ throttlers: [{ name: 'default', ttl: 60_000, limit: 10 }] }),
+    DatabaseModule,
+    EmailModule,
+    PdfModule,
+    ResumeParserModule,
     AuthModule,
-  ],
-  controllers: [AppController],
-  providers: [
-    AppService,
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: RequestTimingInterceptor,
-    },
+    HealthModule,
+    ResumesModule,
+    ResumeImportModule,
   ],
 })
 export class AppModule {}

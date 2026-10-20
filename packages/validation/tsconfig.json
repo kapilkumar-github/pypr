@@ -1,10 +1,7 @@
 {
-  "extends": "@repo/typescript-config/base.json",
+  "extends": "@pypr/tsconfig/library.json",
   "compilerOptions": {
-    "rootDir": "./src",
-    "outDir": "./dist",
-    "declaration": true
+    "types": ["node"]
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["dist", "node_modules"]
+  "include": ["src"]
 }

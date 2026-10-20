@@ -1,0 +1,10 @@
+pnpm-lock.yaml
+dist/
+.next/
+.turbo/
+coverage/
+apps/api/src/generated/
+.next-e2e/
+apps/e2e/.outbox/
+apps/e2e/test-results/
+apps/e2e/playwright-report/

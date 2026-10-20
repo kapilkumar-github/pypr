@@ -1,8 +1,7 @@
 {
-  "extends": "@repo/typescript-config/base.json",
+  "extends": "@pypr/tsconfig/library.json",
   "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist"
+    "types": ["node"]
   },
   "include": ["src"]
 }
