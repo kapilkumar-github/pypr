@@ -1,0 +1,5 @@
+.DS_Store
+node_modules/
+.claude/settings.local.json
+# Design reference prototype, not part of the app
+novacv---ai-resume-&-cv-builder/

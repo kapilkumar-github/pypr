@@ -1,0 +1,294 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Design tokens. Source of truth for colors; see /design.md.
+ * Palette mirrors the NovaCV POC: indigo primary, slate neutrals.
+ */
+:root {
+  /* App accent (primary family). Swapped by html[data-accent], see the accent block below. */
+  --al: 0.511;
+  --ac: 0.262;
+  --ah: 277;
+
+  --radius: 0.5rem;
+
+  --background: oklch(0.968 0.007 247.896); /* slate-100 */
+  --foreground: oklch(0.208 0.042 265.755); /* slate-900 */
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.208 0.042 265.755);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.208 0.042 265.755);
+
+  --primary: oklch(var(--al) var(--ac) var(--ah));
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.968 0.007 247.896); /* slate-100 */
+  --secondary-foreground: oklch(0.372 0.044 257.287); /* slate-700 */
+  --muted: oklch(0.984 0.003 247.858); /* slate-50 */
+  --muted-foreground: oklch(0.554 0.046 257.417); /* slate-500 */
+  --accent: oklch(0.962 calc(var(--ac) * 0.07) var(--ah)); /* accent-50 */
+  --accent-foreground: oklch(calc(var(--al) - 0.055) var(--ac) var(--ah)); /* accent-700 */
+  --destructive: oklch(0.586 0.253 17.585); /* rose-600 */
+  --success: oklch(0.596 0.145 163.225); /* emerald-600 */
+  --warning: oklch(0.666 0.179 58.318); /* amber-600 */
+
+  --border: oklch(0.929 0.013 255.508); /* slate-200 */
+  --input: oklch(0.869 0.022 252.894); /* slate-300 */
+  --ring: oklch(calc(var(--al) + 0.075) calc(var(--ac) * 0.9) var(--ah));
+
+  --brand-from: var(--primary);
+  --brand-to: oklch(calc(var(--al) + 0.03) var(--ac) calc(var(--ah) + 16));
+
+  --chart-1: var(--primary);
+  --chart-2: oklch(0.596 0.145 163.225);
+  --chart-3: oklch(0.666 0.179 58.318);
+  --chart-4: oklch(0.586 0.253 17.585);
+  --chart-5: oklch(0.541 0.281 293.009);
+
+  --paper: oklch(1 0 0); /* white paper */
+  --canvas: oklch(0.93 0.006 255); /* builder preview backdrop */
+  --paper-grid: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cg stroke='rgba(51,65,85,0.07)' stroke-width='1' fill='none'%3E%3Cpath d='M0.5 0V400'/%3E%3Cpath d='M72.5 0V400'/%3E%3Cpath d='M168.5 0V400'/%3E%3Cpath d='M232.5 0V400'/%3E%3Cpath d='M328.5 0V400'/%3E%3Cpath d='M0 0.5H400'/%3E%3Cpath d='M0 88.5H400'/%3E%3Cpath d='M0 152.5H400'/%3E%3Cpath d='M0 248.5H400'/%3E%3Cpath d='M0 312.5H400'/%3E%3C/g%3E%3C/svg%3E");
+  --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.1 0'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23n)'/%3E%3C/svg%3E");
+
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.372 0.044 257.287);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: oklch(0.929 0.013 255.508);
+  --sidebar-ring: var(--ring);
+}
+
+.dark {
+  --background: oklch(0.13 0 0); /* near black */
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.185 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+
+  --primary: oklch(calc(var(--al) + 0.075) var(--ac) var(--ah));
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.922 0 0);
+  --muted: oklch(0.235 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.28 calc(var(--ac) * 0.3) var(--ah)); /* accent tint, the only hued surface */
+  --accent-foreground: oklch(0.87 calc(var(--ac) * 0.26) var(--ah));
+  --destructive: oklch(0.712 0.194 13.428); /* rose-400 */
+  --success: oklch(0.765 0.177 163.223); /* emerald-400 */
+  --warning: oklch(0.828 0.189 84.429); /* amber-400 */
+
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(calc(var(--al) + 0.16) calc(var(--ac) * 0.7) var(--ah));
+
+  --brand-from: var(--primary);
+  --brand-to: oklch(calc(var(--al) + 0.1) var(--ac) calc(var(--ah) + 16));
+
+  --chart-1: var(--primary);
+  --chart-2: oklch(0.765 0.177 163.223);
+  --chart-3: oklch(0.828 0.189 84.429);
+  --chart-4: oklch(0.712 0.194 13.428);
+  --chart-5: oklch(0.702 0.183 293.541);
+
+  --paper: oklch(0.13 0 0);
+  --canvas: oklch(0.1 0 0);
+  --paper-grid: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cg stroke='rgba(255,255,255,0.05)' stroke-width='1' fill='none'%3E%3Cpath d='M0.5 0V400'/%3E%3Cpath d='M72.5 0V400'/%3E%3Cpath d='M168.5 0V400'/%3E%3Cpath d='M232.5 0V400'/%3E%3Cpath d='M328.5 0V400'/%3E%3Cpath d='M0 0.5H400'/%3E%3Cpath d='M0 88.5H400'/%3E%3Cpath d='M0 152.5H400'/%3E%3Cpath d='M0 248.5H400'/%3E%3Cpath d='M0 312.5H400'/%3E%3C/g%3E%3C/svg%3E");
+  --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.1 0'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23n)'/%3E%3C/svg%3E");
+
+  --sidebar: oklch(0.16 0 0);
+  --sidebar-foreground: oklch(0.87 0 0);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: var(--ring);
+}
+
+@theme inline {
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  --font-serif: var(--font-source-serif), Georgia, serif;
+  --font-script: var(--font-pacifico), cursive;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-canvas: var(--canvas);
+  --color-brand-from: var(--brand-from);
+  --color-brand-to: var(--brand-to);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.5);
+  --radius-2xl: calc(var(--radius) * 2);
+  --radius-3xl: calc(var(--radius) * 2.5);
+  --radius-4xl: calc(var(--radius) * 3);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply h-full font-sans antialiased;
+  }
+  body {
+    @apply min-h-full bg-background text-foreground;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--input);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+  }
+}
+
+@theme {
+  --animate-float: float 12s ease-in-out infinite;
+  @keyframes float {
+    0%,
+    100% {
+      translate: 0 0;
+    }
+    50% {
+      translate: 6px -14px;
+    }
+  }
+}
+
+/* Accent picker (profile menu). Lightness, chroma, hue of the light-mode primary; dark mode lifts lightness. */
+:root[data-accent="blue"] { --al: 0.546; --ac: 0.245; --ah: 263; }
+:root[data-accent="violet"] { --al: 0.541; --ac: 0.281; --ah: 293; }
+:root[data-accent="emerald"] { --al: 0.596; --ac: 0.145; --ah: 163; }
+:root[data-accent="teal"] { --al: 0.6; --ac: 0.118; --ah: 185; }
+:root[data-accent="rose"] { --al: 0.586; --ac: 0.253; --ah: 17; }
+:root[data-accent="amber"] { --al: 0.666; --ac: 0.179; --ah: 58; }
+
+/* Paper surface for public (non-authenticated) pages: tinted base + fine grain. */
+@utility bg-paper {
+  background-color: var(--paper);
+  background-image: var(--paper-grid), var(--paper-grain);
+  background-size:
+    400px 400px,
+    240px 240px;
+}
+
+/* Tiptap content typography; shared by editor and read-only render. */
+@layer components {
+  .rich-text {
+    @apply text-sm leading-relaxed;
+  }
+  .rich-text p {
+    @apply my-1;
+  }
+  .rich-text ul {
+    @apply my-1 list-disc pl-5;
+  }
+  .rich-text ol {
+    @apply my-1 list-decimal pl-5;
+  }
+  .rich-text li > p {
+    @apply my-0;
+  }
+  .rich-text a {
+    @apply text-primary underline underline-offset-2;
+  }
+  .rich-text .ProseMirror {
+    @apply outline-none;
+  }
+  .rich-text .ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    @apply pointer-events-none float-left h-0 text-muted-foreground;
+  }
+}
+
+/* Print only the resume paper (see lib/resume/print.ts). */
+@media print {
+  html,
+  body {
+    background: white !important;
+  }
+  [data-slot="sidebar"],
+  [data-print="hide"] {
+    display: none !important;
+  }
+  [data-slot="sidebar-wrapper"],
+  [data-slot="sidebar-inset"],
+  [data-print="reset"] {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: white !important;
+  }
+  .resume-scale {
+    width: auto !important;
+    height: auto !important;
+  }
+  .resume-paper {
+    width: auto !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    transform: none !important;
+    box-shadow: none !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+  }
+  .resume-item {
+    break-inside: avoid;
+  }
+  .resume-section h2 {
+    break-after: avoid;
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "pypr",
+  "private": true,
+  "scripts": {
+    "verify": "pnpm verify:backend && pnpm --dir web verify",
+    "verify:backend": "cd backend && test -z \"$(gofmt -l .)\" && go vet ./... && go test ./... && go build -o bin/api ./cmd/api"
+  }
+}
