@@ -72,6 +72,7 @@ type Handler struct {
 	// parser is nil when resume upload isn't configured.
 	parser     resumeparse.Parser
 	parseLimit *httpx.Limiter
+	imports    *importJobs
 }
 
 // NewHandler wires the resume API. appURL is the web app that serves the print page Chrome renders.
@@ -85,6 +86,7 @@ func NewHandler(db *pgxpool.Pool, log *slog.Logger, renderer pdf.Renderer, parse
 		pdfLimit:   httpx.NewLimiter(30, 10*time.Minute),
 		parser:     parser,
 		parseLimit: httpx.NewLimiter(10, time.Hour),
+		imports:    newImportJobs(),
 	}
 }
 
@@ -92,7 +94,8 @@ func NewHandler(db *pgxpool.Pool, log *slog.Logger, renderer pdf.Renderer, parse
 func (h *Handler) Register(mux *http.ServeMux, requireUser, requireVerified func(http.Handler) http.Handler) {
 	mux.Handle("GET /api/resumes", requireUser(http.HandlerFunc(h.list)))
 	mux.Handle("POST /api/resumes", requireVerified(http.HandlerFunc(h.create)))
-	mux.Handle("POST /api/resumes/parse", requireVerified(http.HandlerFunc(h.parseUpload)))
+	mux.Handle("POST /api/resume-imports", requireVerified(http.HandlerFunc(h.startImport)))
+	mux.Handle("GET /api/resume-imports/{id}", requireVerified(http.HandlerFunc(h.importStatus)))
 	mux.Handle("GET /api/resumes/{id}", requireUser(http.HandlerFunc(h.get)))
 	mux.Handle("PUT /api/resumes/{id}", requireVerified(http.HandlerFunc(h.update)))
 	mux.Handle("DELETE /api/resumes/{id}", requireVerified(http.HandlerFunc(h.delete)))

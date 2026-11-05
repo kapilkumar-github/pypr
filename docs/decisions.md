@@ -45,6 +45,8 @@
 - **D14 Resume upload** sends the file to an LLM on OpenRouter (free models: Gemma 4 31B, then Nemotron 3.5
   Super as fallback) and maps the JSON into a new resume. PDFs use OpenRouter's free text-extraction plugin;
   DOCX text is extracted in Go. Files up to 3 MB, 10 uploads per hour per user, 90 s timeout.
+  Parsing runs as an in-memory job that the browser polls every 2 s: a single request held for a
+  minute was cut off (502) by the proxies in front of the API (Vercel, Cloudflare tunnel).
 - **D13 Public addresses** (`resumes.slug`) are unique across all users (unique index); a clash
   returns a field error. Only lowercase letters, digits and dashes (DB check constraint).
 - **D12 Third-party services behind ports** (Go interfaces) with a dev adapter and a test fake,

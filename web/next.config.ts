@@ -5,8 +5,6 @@ const backendURL = process.env.BACKEND_URL ?? "http://localhost:8080"
 const nextConfig: NextConfig = {
   experimental: {
     agentFeedback: true,
-    // Resume upload waits on an LLM (free models can take ~a minute); the rewrite proxy defaults to 30 s.
-    proxyTimeout: 120_000,
   },
   cacheComponents: true,
   devIndicators: { position: "bottom-right" },

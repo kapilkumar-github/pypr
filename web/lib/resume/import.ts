@@ -1,7 +1,7 @@
 import { blankResume, bullets, newId, normalizeResume, paragraph } from "./defaults"
 import type { ResumeData } from "./types"
 
-/** Fields the API extracts from an uploaded resume (`POST /api/resumes/parse`). Dates are "YYYY-MM" or "". */
+/** Fields the API extracts from an uploaded resume (`POST /api/resume-imports`, then poll `GET /api/resume-imports/{id}`). Dates are "YYYY-MM" or "". */
 export type ParsedResume = {
   fullName: string
   jobTitle: string

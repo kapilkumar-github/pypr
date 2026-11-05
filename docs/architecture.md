@@ -33,7 +33,7 @@ calling `GET /api/auth/me` with the cookie (`web/lib/server/session.ts`).
 | `internal/server` | Route table |
 
 API: `POST /api/auth/{signup,login,logout,forgot-password,reset-password,verify-email,resend-verification}`, `GET /api/auth/me`,
-`POST /api/resumes/parse` (upload: returns extracted fields, stores nothing),
+`POST /api/resume-imports` (upload: starts parsing, returns a job id) and `GET /api/resume-imports/{id}` (pending or the extracted fields; nothing is stored),
 `GET|POST /api/resumes` (list rows include `data` for thumbnails), `GET|PUT|DELETE /api/resumes/{id}`,
 `GET|POST /api/resumes/{id}/versions`, `POST /api/resumes/{id}/versions/{vid}/restore`, `DELETE /api/resumes/{id}/versions/{vid}`,
 `GET|PUT /api/resumes/{id}/sharing`, public (no auth) `GET /api/public/resumes/{slug}` (counts a view, strips contact details

@@ -27,6 +27,8 @@ Known limitations, caveats and deferred work. Newest first within each group.
 ## Scaling (single instance assumptions)
 
 - Rate limiters (login, reset, PDF) are in memory, per process.
+- Resume upload jobs live in memory in the API process: a restart loses running uploads (the user
+  retries), and more than one instance would need a shared job store.
 - PDF render tokens are signed with a key generated at start-up, so the API that mints a token must
   also serve `GET /api/render/resumes/{id}`. Use a shared secret before running more than one instance.
 - PDF rendering is capped at 3 at once per process; the first render after start-up is slower
