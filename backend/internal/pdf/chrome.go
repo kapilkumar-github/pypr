@@ -22,15 +22,16 @@ const (
 // Chrome renders with a local headless Chrome via the DevTools protocol.
 // The browser starts on first use and restarts if it dies.
 type Chrome struct {
-	log  *slog.Logger
-	sem  chan struct{}
-	mu   sync.Mutex
-	ctx  context.Context // browser context; one tab per render
-	stop func()
+	log       *slog.Logger
+	noSandbox bool
+	sem       chan struct{}
+	mu        sync.Mutex
+	ctx       context.Context // browser context; one tab per render
+	stop      func()
 }
 
-func NewChrome(log *slog.Logger) *Chrome {
-	return &Chrome{log: log, sem: make(chan struct{}, maxConcurrent)}
+func NewChrome(log *slog.Logger, noSandbox bool) *Chrome {
+	return &Chrome{log: log, noSandbox: noSandbox, sem: make(chan struct{}, maxConcurrent)}
 }
 
 func (c *Chrome) browser() (context.Context, error) {
@@ -39,8 +40,12 @@ func (c *Chrome) browser() (context.Context, error) {
 	if c.ctx != nil && c.ctx.Err() == nil {
 		return c.ctx, nil
 	}
-	alloc, cancelAlloc := chromedp.NewExecAllocator(context.Background(),
-		append(chromedp.DefaultExecAllocatorOptions[:], chromedp.Flag("hide-scrollbars", true))...)
+	opts := append(chromedp.DefaultExecAllocatorOptions[:], chromedp.Flag("hide-scrollbars", true))
+	if c.noSandbox {
+		// Chrome only ever opens APP_URL (our own print page), never a user-supplied address.
+		opts = append(opts, chromedp.NoSandbox)
+	}
+	alloc, cancelAlloc := chromedp.NewExecAllocator(context.Background(), opts...)
 	ctx, cancelCtx := chromedp.NewContext(alloc)
 	if err := chromedp.Do(ctx); err != nil { // starts the browser; no timeout here, it would stop the browser
 		cancelCtx()

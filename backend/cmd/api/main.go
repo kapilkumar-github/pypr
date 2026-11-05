@@ -56,7 +56,7 @@ func run(log *slog.Logger) error {
 		return err
 	}
 
-	renderer, err := pdf.New(cfg.PDFProvider, log)
+	renderer, err := pdf.New(cfg.PDFProvider, cfg.ChromeNoSandbox, log)
 	if err != nil {
 		return err
 	}

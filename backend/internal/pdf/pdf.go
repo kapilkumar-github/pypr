@@ -14,11 +14,11 @@ type Renderer interface {
 	Close()
 }
 
-// New selects an adapter by provider name.
-func New(provider string, log *slog.Logger) (Renderer, error) {
+// New selects an adapter by provider name. noSandbox applies to the chrome adapter.
+func New(provider string, noSandbox bool, log *slog.Logger) (Renderer, error) {
 	switch provider {
 	case "chrome":
-		return NewChrome(log), nil
+		return NewChrome(log, noSandbox), nil
 	default:
 		return nil, fmt.Errorf("unknown PDF_PROVIDER %q", provider)
 	}

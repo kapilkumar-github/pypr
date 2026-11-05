@@ -88,6 +88,14 @@ go run ./cmd/api                     # :8080, applies migrations on start
 cd web && pnpm install && pnpm dev   # :3000
 ```
 
+## Deploying the API
+
+The Go API runs on the home server in Docker (`backend/Dockerfile`: Go binary + Chrome headless shell),
+from `~/pypr-go-api` with `deploy/homeserver/compose.yml` and `api.env` (secrets, chmod 600, not in git).
+It binds `127.0.0.1:8081`; the existing Cloudflare Tunnel routes `api.pypr.work` there.
+Deploy with `scripts/deploy-api.sh` (rsync source, build image tagged with the commit, restart,
+wait for `/api/health`). The web app (Vercel, `www.pypr.work`) needs `BACKEND_URL=https://api.pypr.work`.
+
 ## Verify
 
 `pnpm verify` at the repo root: backend gofmt, vet, tests, build; web lint, typecheck, build.

@@ -1,0 +1,25 @@
+# Go API on the home server. Lives in ~/pypr-go-api next to:
+#   api.env  settings and secrets (chmod 600, never in git; keys as in backend/.env.example)
+#   .env     only PYPR_API_TAG, written by scripts/deploy-api.sh
+# The Cloudflare Tunnel routes api.pypr.work to http://127.0.0.1:8081 (ADDR in api.env).
+name: pypr-go
+
+services:
+  api:
+    image: pypr-go-api:${PYPR_API_TAG:?run scripts/deploy-api.sh}
+    container_name: pypr-go-api
+    restart: unless-stopped
+    # Host networking: binds 127.0.0.1:8081 only, and reaches the IPv6-only Supabase host.
+    network_mode: host
+    env_file: ./api.env
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m # Chrome profile and HOME
+    shm_size: 256m # Chrome needs more than Docker's 64 MB default
+    cap_drop: [ALL] # so Chrome runs with CHROME_NO_SANDBOX=true
+    stop_grace_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"

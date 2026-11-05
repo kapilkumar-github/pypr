@@ -13,6 +13,8 @@ type Config struct {
 	CookieSecure  bool
 	EmailProvider string
 	PDFProvider   string
+	// ChromeNoSandbox runs Chrome without its sandbox: needed inside a container that drops all capabilities.
+	ChromeNoSandbox bool
 }
 
 func Load() (Config, error) {
@@ -31,6 +33,11 @@ func Load() (Config, error) {
 		return c, errors.New("COOKIE_SECURE must be true or false")
 	}
 	c.CookieSecure = secure
+	noSandbox, err := strconv.ParseBool(envOr("CHROME_NO_SANDBOX", "false"))
+	if err != nil {
+		return c, errors.New("CHROME_NO_SANDBOX must be true or false")
+	}
+	c.ChromeNoSandbox = noSandbox
 	return c, nil
 }
 

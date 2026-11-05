@@ -4,14 +4,16 @@ Known limitations, caveats and deferred work. Newest first within each group.
 
 ## Deployment
 
-- **Deploy the API to the home server at `api.pypr.work`.** Blocked on 2026-11-05: `homeserver`
-  (192.168.1.11) didn't answer on the LAN and `wizard` was offline on Tailscale, so the Cloudflare Tunnel
-  for `api.pypr.work` had no origin (HTTP 530). When it's back: stop whatever serves that hostname,
-  build `backend/cmd/api` for the server, run it with the current `DATABASE_URL`, and point the tunnel at it.
-- **Server PDF needs the web app reachable from the API host.** Chrome on the API host opens
-  `APP_URL/print/{id}`. In production `APP_URL` must be the deployed web app, and Chrome (or Chromium)
-  must be installed on the API host.
-- **The web app isn't deployed yet.** It needs `BACKEND_URL` pointing at the API.
+- **Set `BACKEND_URL=https://api.pypr.work` on the Vercel project and redeploy.** Until then
+  `www.pypr.work/api/*` fails (`DNS_HOSTNAME_RESOLVED_PRIVATE`: the default points at localhost), so
+  sign-in, the builder and server PDFs don't work on the live site.
+- **Disable the old `pypr-api.service` on the home server** (`sudo systemctl disable --now pypr-api`).
+  It points at a missing `/home/kapil/pypr-go` directory and restarts every 5 s; it doesn't bind a port.
+- **Remove the old Node API** (`~/pypr-api`, container `pypr-api`, stopped, `pypr-api:*` images,
+  about 1.5 GB each) once the Go API has proven itself. Kept for rollback:
+  `docker compose -f ~/pypr-go-api/compose.yml down && docker compose -f ~/pypr-api/compose.yml start api`.
+- **Chrome runs without its sandbox** in the API container (`CHROME_NO_SANDBOX=true`, all capabilities
+  dropped). It only opens `APP_URL`. Revisit with a seccomp profile that allows the sandbox.
 
 ## Security
 
