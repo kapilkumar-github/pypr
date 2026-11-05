@@ -107,32 +107,3 @@ export function runChecks(data: ResumeData, pages?: number): Check[] {
     c("Writing", "length", "Bullets are under 40 words", bullets.every((b) => b.split(/\s+/).length <= 40), "Split or shorten bullets longer than 40 words."),
   ]
 }
-
-const STOP = new Set(
-  (
-    "a about above after again against all also am an and any are as at be because been before being below between both but by can could did do does doing down during each etc few for from further had has have having he her here hers him his how i if in into is it its itself just like may me more most must my no nor not now of off on once only or other our ours out over own per same she should so some such than that the their theirs them then there these they this those through to too under until up us very via was we well were what when where which while who whom why will with within without would you your yours " +
-    "ability able across years year experience experienced strong excellent good great team teams work working role roles job position candidate candidates company including include includes required requirements preferred plus bonus responsibilities responsible looking join help using use used new based etc. e.g. i.e. within world best skills skill knowledge understanding opportunity apply equal employer benefits salary full time part"
-  ).split(/\s+/),
-)
-
-export type JobMatch = { score: number; matched: string[]; missing: string[] }
-
-/** Keyword overlap between a job posting and the resume text. Counts terms, not meaning. */
-export function jobMatch(data: ResumeData, posting: string, limit = 30): JobMatch {
-  const tokens = posting.toLowerCase().match(/[a-z0-9][a-z0-9+#.\/-]*[a-z0-9+#]|[a-z]/g) ?? []
-  const freq = new Map<string, number>()
-  for (const t of tokens) {
-    const term = t.replace(/[.\-/]+$/, "")
-    if (term.length < 2 || STOP.has(term) || /^\d+$/.test(term)) continue
-    freq.set(term, (freq.get(term) ?? 0) + 1)
-  }
-  const terms = [...freq.entries()]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .slice(0, limit)
-    .map(([t]) => t)
-  const text = ` ${resumeToPlainText(data).toLowerCase().replace(/[^a-z0-9+#./-]+/g, " ")} `
-  const has = (t: string) => text.includes(` ${t} `) || text.includes(` ${t}s `) || text.includes(` ${t}.`) || text.includes(`${t}/`) || text.includes(`/${t}`)
-  const matched = terms.filter(has)
-  const missing = terms.filter((t) => !has(t))
-  return { score: terms.length ? Math.round((matched.length / terms.length) * 100) : 0, matched, missing }
-}

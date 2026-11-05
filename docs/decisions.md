@@ -37,6 +37,11 @@
   `@page` rule. Chrome only ever opens `APP_URL`, never a user-supplied URL. Max 3 renders at once,
   20 s timeout, 30 per 10 min per user (or per public address). The builder saves pending edits first.
   "Print" in the document menu still uses the browser print dialog with the same print stylesheet.
+- **D16 Job match** (`/job-match`) ranks every resume against a pasted posting. The instant reading
+  finds skills from a built-in dictionary with synonyms (`web/lib/resume/skills.ts`) and splits required
+  from nice-to-have by the posting's headings. "Analyze with AI" asks the model for the requirements
+  (with aliases) and rescores; scoring always runs in the browser, required items count double. The
+  builder's Check panel uses the same instant matcher. AI analysis is meant to become a paid feature.
 - **D15 Email verification gates writes.** New and existing users start unverified. Signup sends a
   48 h single-use link (`/verify-email?token=`); unverified users get a fresh link automatically at most
   once a day when the app loads (`GET /api/auth/me`), and can resend once a minute. `RequireVerified`

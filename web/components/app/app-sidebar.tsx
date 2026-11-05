@@ -8,6 +8,7 @@ import {
   GraduationCap,
   PanelLeftClose,
   PanelLeftOpen,
+  ScanSearch,
   SquareKanban,
   type LucideIcon,
 } from "lucide-react"
@@ -34,6 +35,7 @@ type NavItem = { title: string; href: string; icon: LucideIcon; soon?: boolean }
 
 const nav: NavItem[] = [
   { title: "Resumes", href: "/resumes", icon: FileText },
+  { title: "Job match", href: "/job-match", icon: ScanSearch },
   { title: "Interview prep", href: "/interview-prep", icon: GraduationCap, soon: true },
   { title: "Mock interview", href: "/mock-interview", icon: BotMessageSquare, soon: true },
   { title: "Job tracker", href: "/job-tracker", icon: SquareKanban, soon: true },

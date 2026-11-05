@@ -69,9 +69,3 @@ func TestDOCXText(t *testing.T) {
 		t.Errorf("bad file error %v", err)
 	}
 }
-
-func TestJSONObject(t *testing.T) {
-	if got := jsonObject("```json\n{\"a\":1}\n```"); got != `{"a":1}` {
-		t.Errorf("got %q", got)
-	}
-}

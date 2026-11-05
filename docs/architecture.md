@@ -26,6 +26,9 @@ calling `GET /api/auth/me` with the cookie (`web/lib/server/session.ts`).
 | `internal/db` | pgx pool (`search_path=app`), embedded goose migrations |
 | `internal/auth` | argon2id passwords, DB sessions, password reset, email verification, `RequireUser` / `RequireVerified` middleware, handlers |
 | `internal/email` | `Sender` port; `resend` adapter; `log` dev adapter; `Fake` for tests |
+| `internal/openrouter` | Chat-model client shared by the AI adapters (JSON replies) |
+| `internal/jobs` | In-memory background jobs the web app polls (slow AI calls) |
+| `internal/jobmatch` | `Analyzer` port: reads a job posting's requirements; `openrouter` adapter; `Fake` for tests; handlers |
 | `internal/resumeparse` | `Parser` port for resume upload; `openrouter` adapter (free LLMs, PDF text plugin, DOCX text in Go); `Fake` for tests |
 | `internal/resume` | Resume CRUD scoped to the current user; data stored as opaque JSON |
 | `internal/pdf` | `Renderer` port; `chrome` adapter (chromedp, local headless Chrome); `Fake` for tests |
@@ -33,6 +36,7 @@ calling `GET /api/auth/me` with the cookie (`web/lib/server/session.ts`).
 | `internal/server` | Route table |
 
 API: `POST /api/auth/{signup,login,logout,forgot-password,reset-password,verify-email,resend-verification}`, `GET /api/auth/me`,
+`POST /api/job-analyses` + `GET /api/job-analyses/{id}` (AI reading of a job posting),
 `POST /api/resume-imports` (upload: starts parsing, returns a job id) and `GET /api/resume-imports/{id}` (pending or the extracted fields; nothing is stored),
 `GET|POST /api/resumes` (list rows include `data` for thumbnails), `GET|PUT|DELETE /api/resumes/{id}`,
 `GET|POST /api/resumes/{id}/versions`, `POST /api/resumes/{id}/versions/{vid}/restore`, `DELETE /api/resumes/{id}/versions/{vid}`,

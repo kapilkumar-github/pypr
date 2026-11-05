@@ -18,8 +18,8 @@ type Config struct {
 	PDFProvider   string
 	// ChromeNoSandbox runs Chrome without its sandbox: needed inside a container that drops all capabilities.
 	ChromeNoSandbox bool
-	// Resume upload: provider "openrouter" or "none".
-	ResumeParser     string
+	// AI features (resume upload, job analysis): provider "openrouter" or "none".
+	AIProvider       string
 	OpenRouterKey    string
 	OpenRouterModels []string
 }
@@ -47,9 +47,10 @@ func Load() (Config, error) {
 	c.ChromeNoSandbox = noSandbox
 	c.ResendAPIKey = os.Getenv("RESEND_API_KEY")
 	c.EmailFrom = os.Getenv("EMAIL_FROM")
-	c.ResumeParser = envOr("RESUME_PARSER_PROVIDER", "none")
+	// RESUME_PARSER_PROVIDER is the old name, still read so existing env files keep working.
+	c.AIProvider = envOr("AI_PROVIDER", envOr("RESUME_PARSER_PROVIDER", "none"))
 	c.OpenRouterKey = os.Getenv("OPENROUTER_API_KEY")
-	for _, m := range strings.Split(os.Getenv("OPENROUTER_RESUME_MODELS"), ",") {
+	for _, m := range strings.Split(os.Getenv("OPENROUTER_MODELS"), ",") {
 		if m = strings.TrimSpace(m); m != "" {
 			c.OpenRouterModels = append(c.OpenRouterModels, m)
 		}

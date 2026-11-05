@@ -45,8 +45,9 @@ Known limitations, caveats and deferred work. Newest first within each group.
   (Next streams the page before `notFound()` runs inside Suspense). Crawlers won't index it, but
   the status isn't 404.
 - **View counts include the owner's own visits.**
-- **Job match counts words, not meaning.** It compares the posting's most frequent terms with the
-  resume text; synonyms and phrasing aren't recognized. It doesn't update as you edit.
+- **Job match finds listed skills, not experience.** The instant reading only knows skills in its
+  dictionary; a resume "covers" a skill when the word appears anywhere in it. AI analysis isn't paid
+  or metered yet (20 per hour per user). Years of experience come from dated roles only.
 - **Parser view is a simulation** built from the resume data, not text extracted from the PDF.
 - **ATS checks are rule-based** (26 rules). The score measures readability by software, not fit for a job.
 - **Word export is HTML saved as `.doc`**, not a native `.docx`; layout is simplified.

@@ -5,7 +5,7 @@ import type { ParsedResume } from "@/lib/resume/import"
 
 import { normalizeResume } from "@/lib/resume/defaults"
 import type { ResumeData } from "@/lib/resume/types"
-import { ApiError, api } from "./client"
+import { ApiError, api, runJob } from "./client"
 
 export type ResumeSummary = {
   id: string
@@ -157,25 +157,16 @@ export function useUpdateSharing(id: string) {
 const UPLOAD_MAX_BYTES = 3 << 20
 export const UPLOAD_ACCEPT = ".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
 
-const POLL_MS = 2000
-const POLL_LIMIT_MS = 120_000
-
-/**
- * Sends an uploaded resume file to the API, which extracts its fields with an LLM. Nothing is stored.
- * Parsing can take a minute, so the API runs it as a job and we poll for the result.
- */
+/** Sends an uploaded resume file to the API, which extracts its fields with an LLM. Nothing is stored. */
 export async function parseResumeFile(file: File): Promise<ParsedResume> {
   if (file.size > UPLOAD_MAX_BYTES) throw new ApiError(400, "validation_failed", "", { file: "Upload a file under 3 MB." })
   const bytes = new Uint8Array(await file.arrayBuffer())
   let binary = ""
   for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
-  const { id } = await api<{ id: string }>("/resume-imports", "POST", { fileName: file.name, contentType: file.type, data: btoa(binary) })
-
-  const deadline = Date.now() + POLL_LIMIT_MS
-  while (Date.now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, POLL_MS))
-    const job = await api<{ status: "pending" } | { status: "done"; resume: ParsedResume }>(`/resume-imports/${encodeURIComponent(id)}`)
-    if (job.status === "done") return job.resume
-  }
-  throw new ApiError(504, "timeout", "Reading your resume took too long. Try again in a minute.")
+  const job = await runJob<{ resume: ParsedResume }>("/resume-imports", "/resume-imports", {
+    fileName: file.name,
+    contentType: file.type,
+    data: btoa(binary),
+  })
+  return job.resume
 }

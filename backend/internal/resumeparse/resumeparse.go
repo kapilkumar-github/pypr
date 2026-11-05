@@ -152,7 +152,7 @@ func New(provider, apiKey string, models []string) (Parser, error) {
 		return nil, nil
 	case "openrouter":
 		if apiKey == "" {
-			return nil, errors.New("RESUME_PARSER_PROVIDER=openrouter needs OPENROUTER_API_KEY")
+			return nil, errors.New("AI_PROVIDER=openrouter needs OPENROUTER_API_KEY")
 		}
 		return NewOpenRouter(apiKey, models), nil
 	default:

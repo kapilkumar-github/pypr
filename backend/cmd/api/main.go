@@ -16,6 +16,7 @@ import (
 	"pypr/backend/internal/config"
 	"pypr/backend/internal/db"
 	"pypr/backend/internal/email"
+	"pypr/backend/internal/jobmatch"
 	"pypr/backend/internal/pdf"
 	"pypr/backend/internal/resumeparse"
 	"pypr/backend/internal/server"
@@ -62,14 +63,18 @@ func run(log *slog.Logger) error {
 		return err
 	}
 	defer renderer.Close()
-	parser, err := resumeparse.New(cfg.ResumeParser, cfg.OpenRouterKey, cfg.OpenRouterModels)
+	parser, err := resumeparse.New(cfg.AIProvider, cfg.OpenRouterKey, cfg.OpenRouterModels)
+	if err != nil {
+		return err
+	}
+	analyzer, err := jobmatch.New(cfg.AIProvider, cfg.OpenRouterKey, cfg.OpenRouterModels)
 	if err != nil {
 		return err
 	}
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           server.New(log, pool, authSvc, renderer, parser, cfg.CookieSecure, cfg.AppURL),
+		Handler:           server.New(log, pool, authSvc, renderer, parser, analyzer, cfg.CookieSecure, cfg.AppURL),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

@@ -15,6 +15,7 @@ import (
 
 	"pypr/backend/internal/auth"
 	"pypr/backend/internal/httpx"
+	"pypr/backend/internal/jobs"
 	"pypr/backend/internal/pdf"
 	"pypr/backend/internal/resumeparse"
 )
@@ -72,7 +73,7 @@ type Handler struct {
 	// parser is nil when resume upload isn't configured.
 	parser     resumeparse.Parser
 	parseLimit *httpx.Limiter
-	imports    *importJobs
+	imports    *jobs.Store[resumeparse.Parsed]
 }
 
 // NewHandler wires the resume API. appURL is the web app that serves the print page Chrome renders.
@@ -86,7 +87,7 @@ func NewHandler(db *pgxpool.Pool, log *slog.Logger, renderer pdf.Renderer, parse
 		pdfLimit:   httpx.NewLimiter(30, 10*time.Minute),
 		parser:     parser,
 		parseLimit: httpx.NewLimiter(10, time.Hour),
-		imports:    newImportJobs(),
+		imports:    jobs.NewStore[resumeparse.Parsed](),
 	}
 }
 

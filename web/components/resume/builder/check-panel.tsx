@@ -1,13 +1,15 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import Link from "next/link"
 import { ChevronDown, CircleAlert, CircleCheck, Zap } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { CHECK_CATEGORIES, jobMatch, runChecks, type JobMatch } from "@/lib/resume/checks"
+import { CHECK_CATEGORIES, runChecks } from "@/lib/resume/checks"
+import { matchResume, readPosting, type ResumeMatch } from "@/lib/resume/job-match"
 import { resumeOutline } from "@/lib/resume/plain-text"
 import type { ResumeData } from "@/lib/resume/types"
 import { cn } from "@/lib/utils"
@@ -18,7 +20,7 @@ export function CheckPanel({ data, pages }: { data: ResumeData; pages?: number }
   const failing = checks.filter((c) => !c.pass)
   const score = Math.round(((checks.length - failing.length) / checks.length) * 100)
   const [posting, setPosting] = useState("")
-  const [match, setMatch] = useState<JobMatch | null>(null)
+  const [match, setMatch] = useState<ResumeMatch | null>(null)
 
   return (
     <div className="space-y-4 p-3">
@@ -109,21 +111,25 @@ export function CheckPanel({ data, pages }: { data: ResumeData; pages?: number }
               onChange={(e) => setPosting(e.target.value)}
               className="min-h-32 text-xs"
             />
-            <Button size="sm" disabled={posting.trim().length < 40} onClick={() => setMatch(jobMatch(data, posting))}>
+            <Button size="sm" disabled={posting.trim().length < 40} onClick={() => setMatch(matchResume(data, readPosting(posting)))}>
               Match this posting
             </Button>
           </div>
           {match && (
             <div className="space-y-3 rounded-lg border p-3">
               <div className="flex items-baseline justify-between">
-                <p className="text-sm font-semibold">Keyword match</p>
+                <p className="text-sm font-semibold">Skills match</p>
                 <p className={cn("font-mono text-lg font-bold", match.score >= 60 ? "text-success" : "text-warning")}>{match.score}%</p>
               </div>
-              <Terms title={`In your resume (${match.matched.length})`} terms={match.matched} tone="success" />
-              <Terms title={`Missing (${match.missing.length})`} terms={match.missing} tone="warning" />
+              <Terms title={`In your resume (${match.covered.length})`} terms={match.covered.map((r) => r.name)} tone="success" />
+              <Terms title={`Missing (${match.missing.length})`} terms={match.missing.map((r) => r.name)} tone="warning" />
               <p className="text-xs text-muted-foreground">
-                The most frequent terms in the posting. Add the ones that truly fit your experience, in your own words. It
-                doesn&apos;t update as you edit: match again after changes.
+                Skills the posting asks for, found with a built-in list. Add the ones that truly fit your experience, in your own
+                words. Match again after changes. To compare all your resumes or use AI, open{" "}
+                <Link href="/job-match" className="font-medium text-primary hover:underline">
+                  Job match
+                </Link>
+                .
               </p>
             </div>
           )}

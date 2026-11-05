@@ -2,12 +2,10 @@ package resume
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/base64"
 	"errors"
 	"log/slog"
 	"net/http"
-	"sync"
 	"time"
 
 	"pypr/backend/internal/auth"
@@ -18,64 +16,12 @@ import (
 const (
 	maxUploadBytes = 3 << 20
 	parseTimeout   = 90 * time.Second
-	// importTTL is how long a finished import waits to be collected.
-	importTTL = 10 * time.Minute
 )
 
 type parseInput struct {
 	FileName    string `json:"fileName"`
 	ContentType string `json:"contentType"`
 	Data        string `json:"data"` // base64
-}
-
-// Parsing takes up to a minute on free models, longer than proxies in front of the API keep a
-// request open. So an upload starts a job and the web app polls for the result.
-type importJob struct {
-	userID  string
-	done    bool
-	result  resumeparse.Parsed
-	err     error
-	created time.Time
-}
-
-// importJobs is an in-memory store: jobs live in the process that runs them (single instance).
-type importJobs struct {
-	mu   sync.Mutex
-	jobs map[string]*importJob
-}
-
-func newImportJobs() *importJobs { return &importJobs{jobs: map[string]*importJob{}} }
-
-func (s *importJobs) start(userID string) string {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for id, j := range s.jobs {
-		if time.Since(j.created) > importTTL {
-			delete(s.jobs, id)
-		}
-	}
-	id := rand.Text()
-	s.jobs[id] = &importJob{userID: userID, created: time.Now()}
-	return id
-}
-
-func (s *importJobs) finish(id string, result resumeparse.Parsed, err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if j := s.jobs[id]; j != nil {
-		j.done, j.result, j.err = true, result, err
-	}
-}
-
-// get returns a copy of the user's job, or false when it doesn't exist or belongs to someone else.
-func (s *importJobs) get(id, userID string) (importJob, bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	j := s.jobs[id]
-	if j == nil || j.userID != userID {
-		return importJob{}, false
-	}
-	return *j, true
 }
 
 // startImport validates an uploaded resume (PDF, DOCX or text) and starts extracting its fields.
@@ -109,13 +55,13 @@ func (h *Handler) startImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := h.imports.start(user.ID)
 	doc := resumeparse.Document{Name: in.FileName, MIME: kind, Data: data}
-	go h.runImport(id, user.ID, doc)
+	id := h.imports.Go(user.ID, func() (resumeparse.Parsed, error) { return h.runImport(user.ID, doc) })
 	httpx.WriteJSON(w, http.StatusAccepted, map[string]string{"id": id})
 }
 
-func (h *Handler) runImport(id, userID string, doc resumeparse.Document) {
+// runImport parses doc in the background; slow free models are why it isn't done in the request.
+func (h *Handler) runImport(userID string, doc resumeparse.Document) (resumeparse.Parsed, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), parseTimeout)
 	defer cancel()
 	start := time.Now()
@@ -131,21 +77,21 @@ func (h *Handler) runImport(id, userID string, doc resumeparse.Document) {
 	} else {
 		h.log.Info("resume parsed", "user", userID, "kind", doc.MIME, "dur", time.Since(start).Round(time.Millisecond), slog.Bool("ok", err == nil))
 	}
-	h.imports.finish(id, parsed, err)
+	return parsed, err
 }
 
 // importStatus reports a job: 200 {"status":"pending"} while running, 200 {"status":"done","resume":…}
 // when finished, or the same errors the parse produced.
 func (h *Handler) importStatus(w http.ResponseWriter, r *http.Request) {
-	j, ok := h.imports.get(r.PathValue("id"), auth.UserFrom(r.Context()).ID)
+	j, ok := h.imports.Get(r.PathValue("id"), auth.UserFrom(r.Context()).ID)
 	switch {
 	case !ok:
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "This upload has expired. Try again.")
-	case !j.done:
+	case !j.Done:
 		httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "pending"})
-	case j.err == nil:
-		httpx.WriteJSON(w, http.StatusOK, map[string]any{"status": "done", "resume": j.result})
-	case errors.Is(j.err, resumeparse.ErrUnreadable):
+	case j.Err == nil:
+		httpx.WriteJSON(w, http.StatusOK, map[string]any{"status": "done", "resume": j.Result})
+	case errors.Is(j.Err, resumeparse.ErrUnreadable):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, "unreadable", "We couldn't find resume text in that file. Scanned images aren't supported yet.")
 	default:
 		httpx.WriteError(w, http.StatusBadGateway, "parse_failed", "Couldn't read your resume right now. Try again in a minute.")
