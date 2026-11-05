@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 
 import { FloatingIcons } from "@/components/brand/floating-icons"
+import { BuiltBy } from "@/components/brand/built-by"
 import { Logo } from "@/components/brand/logo"
 import { IconTile } from "@/components/common/icon-tile"
 import { Metric, ResumeMock, type ResumeMockData } from "@/components/landing/resume-mock"
@@ -273,7 +274,10 @@ export default function LandingPage() {
       <footer className="border-t py-10">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 sm:flex-row lg:px-12">
           <Logo size="sm" />
-          <span className="text-xs text-muted-foreground">© pypr. Career tools for job seekers.</span>
+          <div className="flex flex-col items-center gap-1 sm:items-end">
+            <span className="text-xs text-muted-foreground">© pypr. Career tools for job seekers.</span>
+            <BuiltBy />
+          </div>
         </div>
       </footer>
     </div>

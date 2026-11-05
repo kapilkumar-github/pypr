@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Download, LoaderCircle } from "lucide-react"
 import { toast } from "sonner"
 
+import { BuiltBy } from "@/components/brand/built-by"
 import { PAPER, ResumeDocument } from "@/components/resume/document/resume-document"
 import { pageCount, useContentHeight } from "@/components/resume/document/use-page-count"
 import { Button } from "@/components/ui/button"
@@ -80,6 +81,8 @@ export function PublicResumeView({
           <Link href="/" className="font-semibold text-foreground hover:underline">
             pypr
           </Link>
+          {" · "}
+          <BuiltBy />
         </p>
       </main>
     </div>

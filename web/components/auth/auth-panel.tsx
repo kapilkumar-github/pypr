@@ -1,3 +1,4 @@
+import { BuiltBy } from "@/components/brand/built-by"
 import { Logo } from "@/components/brand/logo"
 
 /**
@@ -37,7 +38,10 @@ export function AuthPanel({
         {footer && <div className="mt-6 text-center text-sm text-muted-foreground">{footer}</div>}
       </div>
 
-      <p className="text-center text-xs text-muted-foreground lg:text-left">© pypr. Career tools for job seekers.</p>
+      <div className="flex flex-col items-center gap-1 text-xs text-muted-foreground sm:flex-row sm:justify-between">
+        <p>© pypr. Career tools for job seekers.</p>
+        <BuiltBy />
+      </div>
     </div>
   )
 }
