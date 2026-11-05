@@ -72,6 +72,7 @@ export function BuilderHeader({
   title,
   onTitleChange,
   titleValid,
+  readOnly,
   status,
   mode,
   onModeChange,
@@ -89,6 +90,8 @@ export function BuilderHeader({
   title: string
   onTitleChange: (title: string) => void
   titleValid: boolean
+  /** Unverified email: no renaming, duplicating, replacing or deleting. */
+  readOnly: boolean
   status: React.ReactNode
   mode: BuilderMode
   onModeChange: (mode: BuilderMode) => void
@@ -150,6 +153,7 @@ export function BuilderHeader({
               aria-label="Resume title"
               aria-invalid={!titleValid || undefined}
               value={title}
+              readOnly={readOnly}
               maxLength={200}
               onChange={(e) => onTitleChange(e.target.value)}
               className="h-6 w-36 min-w-0 rounded-md border-transparent bg-transparent px-1 text-sm font-semibold shadow-none hover:border-input focus-visible:border-ring sm:w-56 dark:bg-transparent"
@@ -161,10 +165,10 @@ export function BuilderHeader({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-56">
-                <DropdownMenuItem onSelect={() => setTimeout(() => titleInput.current?.select(), 0)}>
+                <DropdownMenuItem disabled={readOnly} onSelect={() => setTimeout(() => titleInput.current?.select(), 0)}>
                   <PencilLine /> Rename
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={duplicate} disabled={create.isPending}>
+                <DropdownMenuItem onSelect={duplicate} disabled={readOnly || create.isPending}>
                   <Copy /> Duplicate
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={onPrint}>
@@ -175,6 +179,7 @@ export function BuilderHeader({
                   Replace content
                 </DropdownMenuLabel>
                 <DropdownMenuItem
+                  disabled={readOnly}
                   onSelect={() =>
                     setPending({
                       title: "Load the Software Engineer example?",
@@ -187,6 +192,7 @@ export function BuilderHeader({
                   <FileText /> Software Engineer example
                 </DropdownMenuItem>
                 <DropdownMenuItem
+                  disabled={readOnly}
                   onSelect={() =>
                     setPending({
                       title: "Clear this resume?",
@@ -199,7 +205,7 @@ export function BuilderHeader({
                   <FilePlus2 /> Start from blank
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" onSelect={() => setConfirmDelete(true)}>
+                <DropdownMenuItem variant="destructive" disabled={readOnly} onSelect={() => setConfirmDelete(true)}>
                   <Trash2 /> Delete resume
                 </DropdownMenuItem>
               </DropdownMenuContent>

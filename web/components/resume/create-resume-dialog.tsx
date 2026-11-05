@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { errorMessage, fieldErrors } from "@/lib/api/client"
+import { useVerified, verifyFirst } from "@/components/app/verify-email"
 import { useCreateResume } from "@/lib/api/resumes"
 import { blankResume, softwareEngineerExample } from "@/lib/resume/defaults"
 import { cn } from "@/lib/utils"
@@ -34,8 +35,13 @@ export function CreateResumeDialog({ trigger }: { trigger?: React.ReactNode }) {
   const [title, setTitle] = useState("")
   const [start, setStart] = useState<(typeof starts)[number]["id"]>("blank")
   const create = useCreateResume()
+  const verified = useVerified()
 
   function onOpenChange(next: boolean) {
+    if (next && !verified) {
+      verifyFirst()
+      return
+    }
     setOpen(next)
     if (!next) {
       setTitle("")

@@ -161,12 +161,12 @@ export function normalizeResume(raw: unknown): ResumeData {
   return { ...rest, sections: normalizeSections(d.sections, rest) }
 }
 
-const paragraph = (text: string): RichText => ({
+export const paragraph = (text: string): RichText => ({
   type: "doc",
   content: [{ type: "paragraph", content: [{ type: "text", text }] }],
 })
 
-const bullets = (items: string[]): RichText => ({
+export const bullets = (items: string[]): RichText => ({
   type: "doc",
   content: [
     {

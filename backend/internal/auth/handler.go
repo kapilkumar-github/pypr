@@ -18,6 +18,7 @@ type Handler struct {
 	cookieSecure bool
 	loginLimit   *httpx.Limiter
 	resetLimit   *httpx.Limiter
+	verifyLimit  *httpx.Limiter
 }
 
 func NewHandler(svc *Service, log *slog.Logger, cookieSecure bool) *Handler {
@@ -27,6 +28,7 @@ func NewHandler(svc *Service, log *slog.Logger, cookieSecure bool) *Handler {
 		cookieSecure: cookieSecure,
 		loginLimit:   httpx.NewLimiter(10, 15*time.Minute),
 		resetLimit:   httpx.NewLimiter(5, time.Hour),
+		verifyLimit:  httpx.NewLimiter(20, time.Hour),
 	}
 }
 
@@ -37,6 +39,8 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/auth/forgot-password", h.forgotPassword)
 	mux.HandleFunc("POST /api/auth/reset-password", h.resetPassword)
 	mux.Handle("GET /api/auth/me", h.RequireUser(http.HandlerFunc(h.me)))
+	mux.HandleFunc("POST /api/auth/verify-email", h.verifyEmail)
+	mux.Handle("POST /api/auth/resend-verification", h.RequireUser(http.HandlerFunc(h.resendVerification)))
 }
 
 type ctxKey struct{}
@@ -110,7 +114,56 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
-	httpx.WriteJSON(w, http.StatusOK, UserFrom(r.Context()))
+	u := UserFrom(r.Context())
+	if err := h.svc.EnsureVerificationSent(r.Context(), u); err != nil {
+		h.log.Error("send verification email", "user", u.ID, "err", err)
+	}
+	httpx.WriteJSON(w, http.StatusOK, u)
+}
+
+// RequireVerified wraps RequireUser and also rejects users who haven't verified their email.
+// Use it on every route that creates or changes data.
+func (h *Handler) RequireVerified(next http.Handler) http.Handler {
+	return h.RequireUser(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !UserFrom(r.Context()).EmailVerified {
+			httpx.WriteError(w, http.StatusForbidden, "email_unverified", "Verify your email to create or edit resumes.")
+			return
+		}
+		next.ServeHTTP(w, r)
+	}))
+}
+
+func (h *Handler) verifyEmail(w http.ResponseWriter, r *http.Request) {
+	var in struct{ Token string }
+	if !httpx.DecodeJSON(w, r, &in) {
+		return
+	}
+	err := h.svc.VerifyEmail(r.Context(), in.Token)
+	if errors.Is(err, ErrInvalidToken) {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_token", "This verification link is invalid or has expired.")
+		return
+	}
+	if !h.handleErr(w, err) {
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) resendVerification(w http.ResponseWriter, r *http.Request) {
+	u := UserFrom(r.Context())
+	if !h.verifyLimit.Allow(u.ID) {
+		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited", "Too many emails. Try again later.")
+		return
+	}
+	err := h.svc.ResendVerification(r.Context(), u)
+	if errors.Is(err, ErrTooSoon) {
+		httpx.WriteError(w, http.StatusTooManyRequests, "too_soon", "We just sent one. Check your inbox, or try again in a minute.")
+		return
+	}
+	if !h.handleErr(w, err) {
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) forgotPassword(w http.ResponseWriter, r *http.Request) {

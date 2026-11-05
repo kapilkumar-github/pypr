@@ -8,6 +8,7 @@ import {
   FileText,
   GraduationCap,
   SquareKanban,
+  Upload,
   type LucideIcon,
 } from "lucide-react"
 
@@ -95,11 +96,12 @@ const operations: ResumeMockData = {
 
 const highlights = ["Free to start", "ATS-friendly templates", "Light and dark themes"]
 
-const features: { icon: LucideIcon; title: string; description: string; soon?: boolean }[] = [
+const features: { icon: LucideIcon; title: string; description: string; subtext?: string; soon?: boolean }[] = [
   {
     icon: FileText,
     title: "Resume builder",
     description: "Clean templates, rich text bullets, a live preview and one-click PDF export.",
+    subtext: "Upload your existing resume (PDF or Word) and AI fills in every section.",
   },
   {
     icon: GraduationCap,
@@ -265,6 +267,11 @@ export default function LandingPage() {
               </CardHeader>
               <CardContent>
                 <CardDescription>{f.description}</CardDescription>
+                {f.subtext && (
+                  <p className="mt-3 flex items-start gap-1.5 text-xs font-semibold text-primary">
+                    <Upload className="mt-px size-3.5 shrink-0" aria-hidden /> {f.subtext}
+                  </p>
+                )}
               </CardContent>
             </Card>
           ))}

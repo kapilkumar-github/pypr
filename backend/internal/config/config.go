@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type Config struct {
@@ -12,9 +13,15 @@ type Config struct {
 	AppURL        string
 	CookieSecure  bool
 	EmailProvider string
+	ResendAPIKey  string
+	EmailFrom     string
 	PDFProvider   string
 	// ChromeNoSandbox runs Chrome without its sandbox: needed inside a container that drops all capabilities.
 	ChromeNoSandbox bool
+	// Resume upload: provider "openrouter" or "none".
+	ResumeParser     string
+	OpenRouterKey    string
+	OpenRouterModels []string
 }
 
 func Load() (Config, error) {
@@ -38,6 +45,15 @@ func Load() (Config, error) {
 		return c, errors.New("CHROME_NO_SANDBOX must be true or false")
 	}
 	c.ChromeNoSandbox = noSandbox
+	c.ResendAPIKey = os.Getenv("RESEND_API_KEY")
+	c.EmailFrom = os.Getenv("EMAIL_FROM")
+	c.ResumeParser = envOr("RESUME_PARSER_PROVIDER", "none")
+	c.OpenRouterKey = os.Getenv("OPENROUTER_API_KEY")
+	for _, m := range strings.Split(os.Getenv("OPENROUTER_RESUME_MODELS"), ",") {
+		if m = strings.TrimSpace(m); m != "" {
+			c.OpenRouterModels = append(c.OpenRouterModels, m)
+		}
+	}
 	return c, nil
 }
 

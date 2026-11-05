@@ -17,9 +17,12 @@ Known limitations, caveats and deferred work. Newest first within each group.
 
 ## Security
 
-- **Rotate the Supabase database password.** It was pasted in a chat; it's still in use.
-- **Password reset emails aren't sent.** Only the `log` email adapter exists; add a real provider
-  (e.g. Resend) behind `email.Sender`.
+- **Rotate the Supabase database password, the OpenRouter key and the Resend key.** All were pasted in
+  a chat; they're still in use (`backend/.env`, `~/pypr-go-api/api.env` on the server).
+- **A failed verification email is retried only after a day** (or when the user presses Resend): the
+  link is stored before sending, so the daily auto-send sees it as sent. Two tabs opening at once can
+  send two links. Both links work.
+- **Existing users must verify before editing.** Each gets a link the next time they open the app.
 
 ## Scaling (single instance assumptions)
 
@@ -30,6 +33,11 @@ Known limitations, caveats and deferred work. Newest first within each group.
   (Chrome cold start, a few seconds).
 
 ## Resume builder
+
+- **Resume upload depends on free OpenRouter models.** They're rate limited and slow at busy times
+  (22–70 s seen); the API gives up after 90 s. Results can miss or misplace details, so users should
+  review the imported resume. Scanned (image-only) PDFs and old `.doc` files aren't supported.
+- **The uploaded file is sent to OpenRouter and the model provider** to be read; it isn't stored by pypr.
 
 - **Public page for an unknown address returns HTTP 200** with the not-found page and `noindex`
   (Next streams the page before `notFound()` runs inside Suspense). Crawlers won't index it, but

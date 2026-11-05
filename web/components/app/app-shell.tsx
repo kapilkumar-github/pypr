@@ -1,6 +1,7 @@
 "use client"
 
 import { AppSidebar } from "@/components/app/app-sidebar"
+import { VerifyEmailBanner } from "@/components/app/verify-email"
 import { Logo } from "@/components/brand/logo"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 
@@ -14,6 +15,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <SidebarTrigger />
           <Logo href="/resumes" size="sm" />
         </header>
+        <VerifyEmailBanner />
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
       </SidebarInset>
     </SidebarProvider>

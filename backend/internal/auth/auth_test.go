@@ -36,7 +36,7 @@ func TestPasswordHashRoundTrip(t *testing.T) {
 func newTestService(t *testing.T) (*Service, *memStore, *email.Fake) {
 	t.Helper()
 	store, mail := newMemStore(), &email.Fake{}
-	svc, err := NewService(store, mail, "http://app.test/")
+	svc, err := NewService(store, mail, "http://app.test/", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,9 +104,14 @@ func TestSessionExpiry(t *testing.T) {
 
 func resetTokenFrom(t *testing.T, m email.Message) string {
 	t.Helper()
-	i := strings.Index(m.Text, "http://app.test/reset-password?token=")
+	return tokenFrom(t, m, "/reset-password")
+}
+
+func tokenFrom(t *testing.T, m email.Message, path string) string {
+	t.Helper()
+	i := strings.Index(m.Text, "http://app.test"+path+"?token=")
 	if i < 0 {
-		t.Fatalf("no reset link in %q", m.Text)
+		t.Fatalf("no %s link in %q", path, m.Text)
 	}
 	link := strings.Fields(m.Text[i:])[0]
 	u, _ := url.Parse(link)
@@ -117,6 +122,7 @@ func TestPasswordReset(t *testing.T) {
 	ctx := context.Background()
 	svc, _, mail := newTestService(t)
 	s, _ := svc.Signup(ctx, "Ada", "ada@example.com", "password123")
+	mail.Sent = nil // drop the verification email
 
 	if err := svc.RequestPasswordReset(ctx, "unknown@example.com"); err != nil {
 		t.Fatalf("unknown email must succeed silently: %v", err)
@@ -234,5 +240,75 @@ func TestHTTPFlow(t *testing.T) {
 	res = post("/api/auth/login", `{"email":"ada@example.com","password":"password123"}`, nil)
 	if res.StatusCode != http.StatusTooManyRequests {
 		t.Fatalf("login rate limit: got %d", res.StatusCode)
+	}
+}
+
+func TestEmailVerification(t *testing.T) {
+	ctx := context.Background()
+	svc, _, mail := newTestService(t)
+	s, err := svc.Signup(ctx, "Ada", "ada@example.com", "password123")
+	if err != nil || s.User.EmailVerified {
+		t.Fatalf("new users start unverified: %v %+v", err, s.User)
+	}
+	msg, ok := mail.Last()
+	if !ok || !strings.Contains(msg.Text, "/verify-email?token=") {
+		t.Fatalf("signup must send a verification link, got %+v", msg)
+	}
+	token := tokenFrom(t, msg, "/verify-email")
+
+	// Resend is throttled to once a minute; the daily auto-send skips a fresh link.
+	if err := svc.ResendVerification(ctx, s.User); !errors.Is(err, ErrTooSoon) {
+		t.Fatalf("want ErrTooSoon, got %v", err)
+	}
+	if err := svc.EnsureVerificationSent(ctx, s.User); err != nil || len(mail.Sent) != 1 {
+		t.Fatalf("no auto-send within a day: %v, %d sent", err, len(mail.Sent))
+	}
+	later := time.Now().Add(25 * time.Hour)
+	svc.now = func() time.Time { return later }
+	if err := svc.EnsureVerificationSent(ctx, s.User); err != nil || len(mail.Sent) != 2 {
+		t.Fatalf("auto-send after a day: %v, %d sent", err, len(mail.Sent))
+	}
+	svc.now = time.Now
+
+	if err := svc.VerifyEmail(ctx, "bogus"); !errors.Is(err, ErrInvalidToken) {
+		t.Fatalf("bogus token: %v", err)
+	}
+	if err := svc.VerifyEmail(ctx, token); err != nil {
+		t.Fatal(err)
+	}
+	u, _ := svc.Authenticate(ctx, s.Token)
+	if !u.EmailVerified {
+		t.Fatal("user must be verified")
+	}
+	if err := svc.VerifyEmail(ctx, token); !errors.Is(err, ErrInvalidToken) {
+		t.Fatalf("token must be single use, got %v", err)
+	}
+	if err := svc.ResendVerification(ctx, u); err != nil || len(mail.Sent) != 2 {
+		t.Fatalf("verified users get no more emails: %v", err)
+	}
+}
+
+func TestRequireVerified(t *testing.T) {
+	ctx := context.Background()
+	svc, _, mail := newTestService(t)
+	h := NewHandler(svc, slog.New(slog.NewTextHandler(io.Discard, nil)), false)
+	guarded := h.RequireVerified(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }))
+	s, _ := svc.Signup(ctx, "Ada", "ada@example.com", "password123")
+	call := func() int {
+		req := httptest.NewRequest(http.MethodPost, "/", nil)
+		req.AddCookie(&http.Cookie{Name: CookieName, Value: s.Token})
+		rec := httptest.NewRecorder()
+		guarded.ServeHTTP(rec, req)
+		return rec.Code
+	}
+	if code := call(); code != http.StatusForbidden {
+		t.Fatalf("unverified: want 403, got %d", code)
+	}
+	msg, _ := mail.Last()
+	if err := svc.VerifyEmail(ctx, tokenFrom(t, msg, "/verify-email")); err != nil {
+		t.Fatal(err)
+	}
+	if code := call(); code != http.StatusNoContent {
+		t.Fatalf("verified: want 204, got %d", code)
 	}
 }

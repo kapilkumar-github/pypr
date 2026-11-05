@@ -43,9 +43,9 @@ type PublicResume struct {
 	Indexable     bool            `json:"indexable"`
 }
 
-func (h *Handler) registerSharing(mux *http.ServeMux, requireUser func(http.Handler) http.Handler) {
+func (h *Handler) registerSharing(mux *http.ServeMux, requireUser, requireVerified func(http.Handler) http.Handler) {
 	mux.Handle("GET /api/resumes/{id}/sharing", requireUser(http.HandlerFunc(h.getSharing)))
-	mux.Handle("PUT /api/resumes/{id}/sharing", requireUser(http.HandlerFunc(h.updateSharing)))
+	mux.Handle("PUT /api/resumes/{id}/sharing", requireVerified(http.HandlerFunc(h.updateSharing)))
 	mux.HandleFunc("GET /api/public/resumes/{slug}", h.publicResume)
 }
 

@@ -30,11 +30,11 @@ type Version struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-func (h *Handler) registerVersions(mux *http.ServeMux, requireUser func(http.Handler) http.Handler) {
+func (h *Handler) registerVersions(mux *http.ServeMux, requireUser, requireVerified func(http.Handler) http.Handler) {
 	mux.Handle("GET /api/resumes/{id}/versions", requireUser(http.HandlerFunc(h.listVersions)))
-	mux.Handle("POST /api/resumes/{id}/versions", requireUser(http.HandlerFunc(h.createVersion)))
-	mux.Handle("POST /api/resumes/{id}/versions/{vid}/restore", requireUser(http.HandlerFunc(h.restoreVersion)))
-	mux.Handle("DELETE /api/resumes/{id}/versions/{vid}", requireUser(http.HandlerFunc(h.deleteVersion)))
+	mux.Handle("POST /api/resumes/{id}/versions", requireVerified(http.HandlerFunc(h.createVersion)))
+	mux.Handle("POST /api/resumes/{id}/versions/{vid}/restore", requireVerified(http.HandlerFunc(h.restoreVersion)))
+	mux.Handle("DELETE /api/resumes/{id}/versions/{vid}", requireVerified(http.HandlerFunc(h.deleteVersion)))
 }
 
 func pruneAutoVersions(ctx context.Context, tx pgx.Tx, resumeID string) error {

@@ -27,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { useVerified, verifyFirst } from "@/components/app/verify-email"
 import { useCreateResume, useDeleteResume, type ResumeSummary } from "@/lib/api/resumes"
 import { timeAgo } from "@/lib/resume/format"
 import { TEMPLATES } from "@/lib/resume/types"
@@ -38,8 +39,13 @@ function useResumeActions(resume: ResumeSummary) {
   const [confirming, setConfirming] = useState(false)
   const remove = useDeleteResume()
   const create = useCreateResume()
+  const verified = useVerified()
 
-  const duplicate = () =>
+  const duplicate = () => {
+    if (!verified) {
+      verifyFirst()
+      return
+    }
     create.mutate(
       { title: `${resume.title} (copy)`.slice(0, 200), data: resume.data },
       {
@@ -47,6 +53,7 @@ function useResumeActions(resume: ResumeSummary) {
         onError: () => toast.error("Couldn't duplicate the resume. Try again."),
       },
     )
+  }
 
   const dialog = (
     <AlertDialog open={confirming} onOpenChange={setConfirming}>
@@ -73,7 +80,7 @@ function useResumeActions(resume: ResumeSummary) {
     </AlertDialog>
   )
 
-  return { duplicate, duplicating: create.isPending, confirmDelete: () => setConfirming(true), dialog }
+  return { duplicate, duplicating: create.isPending, confirmDelete: () => (verified ? setConfirming(true) : verifyFirst()), dialog }
 }
 
 function ActionsMenu({

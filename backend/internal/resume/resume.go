@@ -16,6 +16,7 @@ import (
 	"pypr/backend/internal/auth"
 	"pypr/backend/internal/httpx"
 	"pypr/backend/internal/pdf"
+	"pypr/backend/internal/resumeparse"
 )
 
 const maxDataBytes = 512 << 10
@@ -68,28 +69,35 @@ type Handler struct {
 	appURL   string
 	tokens   renderTokens
 	pdfLimit *httpx.Limiter
+	// parser is nil when resume upload isn't configured.
+	parser     resumeparse.Parser
+	parseLimit *httpx.Limiter
 }
 
 // NewHandler wires the resume API. appURL is the web app that serves the print page Chrome renders.
-func NewHandler(db *pgxpool.Pool, log *slog.Logger, renderer pdf.Renderer, appURL string) *Handler {
+func NewHandler(db *pgxpool.Pool, log *slog.Logger, renderer pdf.Renderer, parser resumeparse.Parser, appURL string) *Handler {
 	return &Handler{
-		db:       db,
-		log:      log,
-		pdf:      renderer,
-		appURL:   strings.TrimRight(appURL, "/"),
-		tokens:   newRenderTokens(),
-		pdfLimit: httpx.NewLimiter(30, 10*time.Minute),
+		db:         db,
+		log:        log,
+		pdf:        renderer,
+		appURL:     strings.TrimRight(appURL, "/"),
+		tokens:     newRenderTokens(),
+		pdfLimit:   httpx.NewLimiter(30, 10*time.Minute),
+		parser:     parser,
+		parseLimit: httpx.NewLimiter(10, time.Hour),
 	}
 }
 
-func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) http.Handler) {
+// Register adds the routes. requireVerified guards every route that creates or changes data.
+func (h *Handler) Register(mux *http.ServeMux, requireUser, requireVerified func(http.Handler) http.Handler) {
 	mux.Handle("GET /api/resumes", requireUser(http.HandlerFunc(h.list)))
-	mux.Handle("POST /api/resumes", requireUser(http.HandlerFunc(h.create)))
+	mux.Handle("POST /api/resumes", requireVerified(http.HandlerFunc(h.create)))
+	mux.Handle("POST /api/resumes/parse", requireVerified(http.HandlerFunc(h.parseUpload)))
 	mux.Handle("GET /api/resumes/{id}", requireUser(http.HandlerFunc(h.get)))
-	mux.Handle("PUT /api/resumes/{id}", requireUser(http.HandlerFunc(h.update)))
-	mux.Handle("DELETE /api/resumes/{id}", requireUser(http.HandlerFunc(h.delete)))
-	h.registerVersions(mux, requireUser)
-	h.registerSharing(mux, requireUser)
+	mux.Handle("PUT /api/resumes/{id}", requireVerified(http.HandlerFunc(h.update)))
+	mux.Handle("DELETE /api/resumes/{id}", requireVerified(http.HandlerFunc(h.delete)))
+	h.registerVersions(mux, requireUser, requireVerified)
+	h.registerSharing(mux, requireUser, requireVerified)
 	h.registerRender(mux, requireUser)
 }
 

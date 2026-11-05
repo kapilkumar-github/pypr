@@ -37,7 +37,15 @@
   `@page` rule. Chrome only ever opens `APP_URL`, never a user-supplied URL. Max 3 renders at once,
   20 s timeout, 30 per 10 min per user (or per public address). The builder saves pending edits first.
   "Print" in the document menu still uses the browser print dialog with the same print stylesheet.
+- **D15 Email verification gates writes.** New and existing users start unverified. Signup sends a
+  48 h single-use link (`/verify-email?token=`); unverified users get a fresh link automatically at most
+  once a day when the app loads (`GET /api/auth/me`), and can resend once a minute. `RequireVerified`
+  guards every route that creates or changes data (resumes, versions, sharing, upload); reading,
+  downloading and sharing pages stay available. The web app shows a banner and makes the builder read-only.
+- **D14 Resume upload** sends the file to an LLM on OpenRouter (free models: Gemma 4 31B, then Nemotron 3.5
+  Super as fallback) and maps the JSON into a new resume. PDFs use OpenRouter's free text-extraction plugin;
+  DOCX text is extracted in Go. Files up to 3 MB, 10 uploads per hour per user, 90 s timeout.
 - **D13 Public addresses** (`resumes.slug`) are unique across all users (unique index); a clash
   returns a field error. Only lowercase letters, digits and dashes (DB check constraint).
 - **D12 Third-party services behind ports** (Go interfaces) with a dev adapter and a test fake,
-  e.g. `email.Sender` (`log` adapter now; real provider later via `EMAIL_PROVIDER`).
+  e.g. `email.Sender` (`log` or `resend` via `EMAIL_PROVIDER`), `resumeparse.Parser` (`RESUME_PARSER_PROVIDER`).

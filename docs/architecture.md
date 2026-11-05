@@ -24,14 +24,16 @@ calling `GET /api/auth/me` with the cookie (`web/lib/server/session.ts`).
 | `cmd/api` | Process wiring: env, migrations, pool, graceful shutdown |
 | `internal/config` | Env config (`.env.example`) |
 | `internal/db` | pgx pool (`search_path=app`), embedded goose migrations |
-| `internal/auth` | argon2id passwords, DB sessions, password reset, `RequireUser` middleware, handlers |
-| `internal/email` | `Sender` port; `log` dev adapter; `Fake` for tests |
+| `internal/auth` | argon2id passwords, DB sessions, password reset, email verification, `RequireUser` / `RequireVerified` middleware, handlers |
+| `internal/email` | `Sender` port; `resend` adapter; `log` dev adapter; `Fake` for tests |
+| `internal/resumeparse` | `Parser` port for resume upload; `openrouter` adapter (free LLMs, PDF text plugin, DOCX text in Go); `Fake` for tests |
 | `internal/resume` | Resume CRUD scoped to the current user; data stored as opaque JSON |
 | `internal/pdf` | `Renderer` port; `chrome` adapter (chromedp, local headless Chrome); `Fake` for tests |
 | `internal/httpx` | JSON helpers, JSON-only guard for mutations (CSRF), logging/recover, rate limiter |
 | `internal/server` | Route table |
 
-API: `POST /api/auth/{signup,login,logout,forgot-password,reset-password}`, `GET /api/auth/me`,
+API: `POST /api/auth/{signup,login,logout,forgot-password,reset-password,verify-email,resend-verification}`, `GET /api/auth/me`,
+`POST /api/resumes/parse` (upload: returns extracted fields, stores nothing),
 `GET|POST /api/resumes` (list rows include `data` for thumbnails), `GET|PUT|DELETE /api/resumes/{id}`,
 `GET|POST /api/resumes/{id}/versions`, `POST /api/resumes/{id}/versions/{vid}/restore`, `DELETE /api/resumes/{id}/versions/{vid}`,
 `GET|PUT /api/resumes/{id}/sharing`, public (no auth) `GET /api/public/resumes/{slug}` (counts a view, strips contact details
@@ -78,7 +80,7 @@ All tables live in the `app` Postgres schema. Other schemas in the database are 
 | B6 | Share: public page, address, privacy options, view/download counts | done |
 
 Next candidates: persona model + interview prep content (Software Engineer first), AI mock interview,
-job tracker, real email adapter (e.g. Resend) for password reset.
+job tracker.
 
 ## Running locally
 

@@ -17,6 +17,7 @@ import (
 	"pypr/backend/internal/db"
 	"pypr/backend/internal/email"
 	"pypr/backend/internal/pdf"
+	"pypr/backend/internal/resumeparse"
 	"pypr/backend/internal/server"
 )
 
@@ -47,11 +48,11 @@ func run(log *slog.Logger) error {
 	}
 	defer pool.Close()
 
-	mailer, err := email.New(cfg.EmailProvider, log)
+	mailer, err := email.New(cfg.EmailProvider, log, cfg.ResendAPIKey, cfg.EmailFrom)
 	if err != nil {
 		return err
 	}
-	authSvc, err := auth.NewService(auth.PGStore{DB: pool}, mailer, cfg.AppURL)
+	authSvc, err := auth.NewService(auth.PGStore{DB: pool}, mailer, cfg.AppURL, log)
 	if err != nil {
 		return err
 	}
@@ -61,10 +62,14 @@ func run(log *slog.Logger) error {
 		return err
 	}
 	defer renderer.Close()
+	parser, err := resumeparse.New(cfg.ResumeParser, cfg.OpenRouterKey, cfg.OpenRouterModels)
+	if err != nil {
+		return err
+	}
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           server.New(log, pool, authSvc, renderer, cfg.CookieSecure, cfg.AppURL),
+		Handler:           server.New(log, pool, authSvc, renderer, parser, cfg.CookieSecure, cfg.AppURL),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

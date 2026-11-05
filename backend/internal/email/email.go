@@ -18,11 +18,16 @@ type Sender interface {
 	Send(ctx context.Context, m Message) error
 }
 
-// New selects an adapter by provider name.
-func New(provider string, log *slog.Logger) (Sender, error) {
+// New selects an adapter by provider name. "resend" needs an API key and a from address.
+func New(provider string, log *slog.Logger, resendKey, from string) (Sender, error) {
 	switch provider {
 	case "log":
 		return LogSender{Log: log}, nil
+	case "resend":
+		if resendKey == "" || from == "" {
+			return nil, fmt.Errorf("EMAIL_PROVIDER=resend needs RESEND_API_KEY and EMAIL_FROM")
+		}
+		return NewResend(resendKey, from), nil
 	default:
 		return nil, fmt.Errorf("unknown EMAIL_PROVIDER %q", provider)
 	}

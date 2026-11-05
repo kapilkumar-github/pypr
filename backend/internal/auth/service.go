@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/mail"
 	"net/url"
 	"strings"
@@ -16,11 +17,17 @@ import (
 const (
 	SessionTTL = 30 * 24 * time.Hour
 	ResetTTL   = time.Hour
+	VerifyTTL  = 48 * time.Hour
+	// resendGap is the minimum time between verification emails a user can ask for.
+	resendGap = time.Minute
+	// autoResendGap is how often an unverified user gets a fresh link just by opening the app.
+	autoResendGap = 24 * time.Hour
 )
 
 var (
 	ErrInvalidCredentials = errors.New("invalid email or password")
 	ErrInvalidToken       = errors.New("invalid or expired token")
+	ErrTooSoon            = errors.New("verification email sent too recently")
 )
 
 // ValidationError maps field names to user-facing messages.
@@ -29,6 +36,7 @@ type ValidationError map[string]string
 func (v ValidationError) Error() string { return "validation failed" }
 
 type Service struct {
+	log       *slog.Logger
 	store     Store
 	mail      email.Sender
 	appURL    string
@@ -36,12 +44,12 @@ type Service struct {
 	dummyHash string
 }
 
-func NewService(store Store, mail email.Sender, appURL string) (*Service, error) {
+func NewService(store Store, mail email.Sender, appURL string, log *slog.Logger) (*Service, error) {
 	dummy, err := HashPassword("dummy-password-for-timing")
 	if err != nil {
 		return nil, err
 	}
-	return &Service{store: store, mail: mail, appURL: strings.TrimRight(appURL, "/"), now: time.Now, dummyHash: dummy}, nil
+	return &Service{log: log, store: store, mail: mail, appURL: strings.TrimRight(appURL, "/"), now: time.Now, dummyHash: dummy}, nil
 }
 
 type Session struct {
@@ -77,7 +85,15 @@ func (s *Service) Signup(ctx context.Context, name, emailAddr, password string) 
 	if err != nil {
 		return Session{}, err
 	}
-	return s.startSession(ctx, u)
+	sess, err := s.startSession(ctx, u)
+	if err != nil {
+		return Session{}, err
+	}
+	// The account works without the email; a failed send is retried from the app.
+	if err := s.sendVerification(ctx, u); err != nil {
+		s.log.Error("send verification email", "user", u.ID, "err", err)
+	}
+	return sess, nil
 }
 
 func (s *Service) Login(ctx context.Context, emailAddr, password string) (Session, error) {
@@ -152,6 +168,59 @@ func (s *Service) ResetPassword(ctx context.Context, token, password string) err
 		return ErrInvalidToken
 	}
 	return err
+}
+
+// ResendVerification sends a new link on request, at most once a minute.
+func (s *Service) ResendVerification(ctx context.Context, u User) error {
+	if u.EmailVerified {
+		return nil
+	}
+	last, err := s.store.LastVerificationSent(ctx, u.ID)
+	if err != nil {
+		return err
+	}
+	if s.now().Sub(last) < resendGap {
+		return ErrTooSoon
+	}
+	return s.sendVerification(ctx, u)
+}
+
+// EnsureVerificationSent emails an unverified user a link if none was sent in the last day.
+// Called when the app loads, so existing accounts get a link without signing up again.
+func (s *Service) EnsureVerificationSent(ctx context.Context, u User) error {
+	if u.EmailVerified {
+		return nil
+	}
+	last, err := s.store.LastVerificationSent(ctx, u.ID)
+	if err != nil || s.now().Sub(last) < autoResendGap {
+		return err
+	}
+	return s.sendVerification(ctx, u)
+}
+
+func (s *Service) VerifyEmail(ctx context.Context, token string) error {
+	err := s.store.VerifyEmail(ctx, hashToken(token), s.now())
+	if errors.Is(err, ErrNotFound) {
+		return ErrInvalidToken
+	}
+	return err
+}
+
+func (s *Service) sendVerification(ctx context.Context, u User) error {
+	token, hash, err := newToken()
+	if err != nil {
+		return err
+	}
+	if err := s.store.CreateEmailVerification(ctx, u.ID, hash, s.now().Add(VerifyTTL)); err != nil {
+		return err
+	}
+	link := s.appURL + "/verify-email?token=" + url.QueryEscape(token)
+	return s.mail.Send(ctx, email.Message{
+		To:      u.Email,
+		Subject: "Verify your email for pypr",
+		Text: fmt.Sprintf("Hi %s,\n\nConfirm this is your email address to start creating and editing resumes on pypr. "+
+			"The link expires in 48 hours.\n\n%s\n\nIf you didn't create a pypr account, you can ignore this email.", u.Name, link),
+	})
 }
 
 func (s *Service) startSession(ctx context.Context, u User) (Session, error) {

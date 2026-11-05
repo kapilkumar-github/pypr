@@ -43,7 +43,12 @@ func WriteValidation(w http.ResponseWriter, fields map[string]string) {
 
 // DecodeJSON reads a size-limited JSON body into dst. It writes the error response itself and returns false on failure.
 func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
-	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBodyBytes))
+	return DecodeJSONLimit(w, r, dst, maxBodyBytes)
+}
+
+// DecodeJSONLimit is DecodeJSON with a custom body size limit, for endpoints that take uploads.
+func DecodeJSONLimit(w http.ResponseWriter, r *http.Request, dst any, limit int64) bool {
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, limit))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(dst); err != nil {
 		var tooBig *http.MaxBytesError

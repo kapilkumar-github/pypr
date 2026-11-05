@@ -5,6 +5,7 @@ import Link from "next/link"
 import { toast } from "sonner"
 import { Braces, CircleCheck, CloudAlert, FileQuestion, FileText, LoaderCircle } from "lucide-react"
 
+import { useVerified, VerifyEmailBanner } from "@/components/app/verify-email"
 import { EmptyState } from "@/components/common/empty-state"
 import { Segmented } from "@/components/common/segmented"
 import { Button } from "@/components/ui/button"
@@ -88,7 +89,9 @@ function Editor({ resume }: { resume: Resume }) {
 
   const payload = useMemo(() => ({ title: title.trim(), data }), [title, data])
   const payloadJson = useMemo(() => JSON.stringify(payload), [payload])
-  const dirty = payloadJson !== savedJson
+  // Unverified users can view but not edit: panels are inert and nothing is saved.
+  const verified = useVerified()
+  const dirty = verified && payloadJson !== savedJson
   const titleValid = payload.title.length > 0 && payload.title.length <= 200
 
   useEffect(() => {
@@ -147,11 +150,13 @@ function Editor({ resume }: { resume: Resume }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-print="reset">
+      <VerifyEmailBanner />
       <BuilderHeader
         id={resume.id}
         title={title}
         onTitleChange={setTitle}
         titleValid={titleValid}
+        readOnly={!verified}
         status={
           <SaveStatus
             state={state}
@@ -185,6 +190,7 @@ function Editor({ resume }: { resume: Resume }) {
             view === "panel" ? "block" : "hidden",
           )}
           data-print="hide"
+          inert={!verified && mode !== "check"}
         >
           {mode === "design" ? (
             <DesignPanel data={data} onChange={set("settings")} />
@@ -230,7 +236,7 @@ function Editor({ resume }: { resume: Resume }) {
           onTabChange={(tab) => setSheet((s) => ({ ...s, tab }))}
           title={title}
           data={data}
-          canRestore={state === "saved"}
+          canRestore={verified && state === "saved"}
           onDownloadPdf={downloadResumePdf}
           onImport={replace}
           onRestored={(r) => {

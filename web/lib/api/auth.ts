@@ -1,6 +1,6 @@
 import { api } from "./client"
 
-export type User = { id: string; name: string; email: string; createdAt: string }
+export type User = { id: string; name: string; email: string; emailVerified: boolean; createdAt: string }
 
 export const authApi = {
   signup: (body: { name: string; email: string; password: string }) => api<User>("/auth/signup", "POST", body),
@@ -8,6 +8,8 @@ export const authApi = {
   logout: () => api<void>("/auth/logout", "POST"),
   forgotPassword: (body: { email: string }) => api<void>("/auth/forgot-password", "POST", body),
   resetPassword: (body: { token: string; password: string }) => api<void>("/auth/reset-password", "POST", body),
+  verifyEmail: (body: { token: string }) => api<void>("/auth/verify-email", "POST", body),
+  resendVerification: () => api<void>("/auth/resend-verification", "POST"),
 }
 
 /** Only same-site relative paths are allowed as post-login destinations (prevents open redirects). */

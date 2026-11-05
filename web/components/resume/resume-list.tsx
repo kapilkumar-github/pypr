@@ -9,6 +9,7 @@ import { FormAlert } from "@/components/common/form-alert"
 import { PageHeader } from "@/components/common/page-header"
 import { CreateResumeDialog } from "@/components/resume/create-resume-dialog"
 import { ResumeCard, type ResumeLayout } from "@/components/resume/resume-card"
+import { UploadResumeButton } from "@/components/resume/upload-resume-button"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -146,7 +147,14 @@ export function ResumeList() {
         }
         title="Resumes"
         description="Keep a tailored resume for each kind of role you apply to."
-        actions={hasResumes ? <CreateResumeDialog /> : undefined}
+        actions={
+          hasResumes ? (
+            <div className="flex flex-wrap gap-2">
+              <UploadResumeButton />
+              <CreateResumeDialog />
+            </div>
+          ) : undefined
+        }
       />
 
       {resumes.isPending && (
@@ -173,15 +181,18 @@ export function ResumeList() {
         <EmptyState
           icon={FileText}
           title="No resumes yet"
-          description="Create your first resume. Start blank or from a Software Engineer example."
+          description="Create your first resume. Start blank, from a Software Engineer example, or upload the one you have."
           action={
-            <CreateResumeDialog
-              trigger={
-                <Button>
-                  <Plus data-icon="inline-start" /> Create resume
-                </Button>
-              }
-            />
+            <div className="flex flex-wrap justify-center gap-2">
+              <CreateResumeDialog
+                trigger={
+                  <Button>
+                    <Plus data-icon="inline-start" /> Create resume
+                  </Button>
+                }
+              />
+              <UploadResumeButton />
+            </div>
           }
         />
       )}

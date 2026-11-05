@@ -12,6 +12,7 @@ type memStore struct {
 	users    map[string]memUser
 	sessions map[string]memSession
 	resets   map[string]memReset
+	verifies map[string]memVerify
 	seq      int
 }
 
@@ -23,6 +24,12 @@ type memSession struct {
 	userID  string
 	expires time.Time
 }
+type memVerify struct {
+	userID  string
+	expires time.Time
+	created time.Time
+	used    bool
+}
 type memReset struct {
 	userID  string
 	expires time.Time
@@ -30,7 +37,7 @@ type memReset struct {
 }
 
 func newMemStore() *memStore {
-	return &memStore{users: map[string]memUser{}, sessions: map[string]memSession{}, resets: map[string]memReset{}}
+	return &memStore{users: map[string]memUser{}, sessions: map[string]memSession{}, resets: map[string]memReset{}, verifies: map[string]memVerify{}}
 }
 
 func (m *memStore) CreateUser(_ context.Context, name, email, hash string) (User, error) {
@@ -106,5 +113,39 @@ func (m *memStore) ResetPassword(_ context.Context, h []byte, now time.Time, has
 			delete(m.sessions, k)
 		}
 	}
+	return nil
+}
+
+func (m *memStore) CreateEmailVerification(_ context.Context, userID string, h []byte, exp time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.verifies[string(h)] = memVerify{userID: userID, expires: exp, created: exp.Add(-VerifyTTL)}
+	return nil
+}
+
+func (m *memStore) LastVerificationSent(_ context.Context, userID string) (time.Time, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var last time.Time
+	for _, v := range m.verifies {
+		if v.userID == userID && v.created.After(last) {
+			last = v.created
+		}
+	}
+	return last, nil
+}
+
+func (m *memStore) VerifyEmail(_ context.Context, h []byte, now time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	v, ok := m.verifies[string(h)]
+	if !ok || v.used || !v.expires.After(now) {
+		return ErrNotFound
+	}
+	v.used = true
+	m.verifies[string(h)] = v
+	u := m.users[v.userID]
+	u.EmailVerified = true
+	m.users[v.userID] = u
 	return nil
 }
