@@ -2,7 +2,9 @@ package admin
 
 import (
 	"net/http"
+	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 type Totals struct {
@@ -89,8 +91,20 @@ func (h *Handler) load(r *http.Request) (Stats, error) {
 		if err := rec.Scan(&u.Name, &u.Email, &u.Verified, &u.CreatedAt); err != nil {
 			return s, err
 		}
+		u.Email = maskEmail(u.Email)
 		s.Recent = append(s.Recent, u)
 	}
 	s.Updated = time.Now().UTC().Format(time.RFC3339)
 	return s, rec.Err()
+}
+
+// maskEmail keeps the first letter and the domain: "kapil@gmail.com" becomes "k***@gmail.com".
+// Masking happens here so the full address never leaves the API.
+func maskEmail(e string) string {
+	at := strings.LastIndex(e, "@")
+	if at < 1 {
+		return "***"
+	}
+	r, _ := utf8.DecodeRuneInString(e)
+	return string(r) + "***" + e[at:]
 }

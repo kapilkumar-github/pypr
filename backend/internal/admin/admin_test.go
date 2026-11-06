@@ -45,3 +45,16 @@ func TestRateLimited(t *testing.T) {
 		t.Fatalf("got %d, want 429", last)
 	}
 }
+
+func TestMaskEmail(t *testing.T) {
+	for in, want := range map[string]string{
+		"kapil@gmail.com": "k***@gmail.com",
+		"a@b.co":          "a***@b.co",
+		"nonsense":        "***",
+		"@x.com":          "***",
+	} {
+		if got := maskEmail(in); got != want {
+			t.Errorf("maskEmail(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

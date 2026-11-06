@@ -199,8 +199,8 @@ function Recent({ signups }: { signups: AdminStats["recentSignups"] }) {
         <p className="text-sm text-muted-foreground">No users yet.</p>
       ) : (
         <ul className="divide-y">
-          {signups.map((u) => (
-            <li key={u.email} className="flex items-center justify-between gap-3 py-2 text-sm">
+          {signups.map((u, i) => (
+            <li key={i} className="flex items-center justify-between gap-3 py-2 text-sm">
               <div className="min-w-0">
                 <p className="truncate font-medium">{u.name}</p>
                 <p className="truncate text-xs text-muted-foreground">{u.email}</p>
