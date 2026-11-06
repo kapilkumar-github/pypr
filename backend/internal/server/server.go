@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"pypr/backend/internal/admin"
 	"pypr/backend/internal/auth"
 	"pypr/backend/internal/httpx"
 	"pypr/backend/internal/jobmatch"
@@ -14,7 +15,7 @@ import (
 	"pypr/backend/internal/resumeparse"
 )
 
-func New(log *slog.Logger, db *pgxpool.Pool, authSvc *auth.Service, renderer pdf.Renderer, parser resumeparse.Parser, analyzer jobmatch.Analyzer, cookieSecure bool, appURL string) http.Handler {
+func New(log *slog.Logger, db *pgxpool.Pool, authSvc *auth.Service, renderer pdf.Renderer, parser resumeparse.Parser, analyzer jobmatch.Analyzer, cookieSecure bool, appURL, adminCode string) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		if err := db.Ping(r.Context()); err != nil {
@@ -28,6 +29,7 @@ func New(log *slog.Logger, db *pgxpool.Pool, authSvc *auth.Service, renderer pdf
 	authHandler.Register(mux)
 	resume.NewHandler(db, log, renderer, parser, appURL).Register(mux, authHandler.RequireUser, authHandler.RequireVerified)
 	jobmatch.NewHandler(analyzer, log).Register(mux, authHandler.RequireVerified)
+	admin.NewHandler(db, log, adminCode).Register(mux)
 
 	return httpx.Logging(log, httpx.RequireJSON(mux))
 }

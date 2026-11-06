@@ -96,7 +96,7 @@ func (h *Handler) ownerPDF(w http.ResponseWriter, r *http.Request) {
 	if h.notFound(w, err) {
 		return
 	}
-	h.writePDF(w, r, renderClaim{ResumeID: id})
+	h.writePDF(w, r, renderClaim{ResumeID: id}, "pdf-owner")
 }
 
 // publicPDF renders a shared resume for a visitor and counts the download.
@@ -113,10 +113,10 @@ func (h *Handler) publicPDF(w http.ResponseWriter, r *http.Request) {
 	if h.notFound(w, err) {
 		return
 	}
-	h.writePDF(w, r, c)
+	h.writePDF(w, r, c, "pdf-public")
 }
 
-func (h *Handler) writePDF(w http.ResponseWriter, r *http.Request, c renderClaim) {
+func (h *Handler) writePDF(w http.ResponseWriter, r *http.Request, c renderClaim, kind string) {
 	c.Expires = time.Now().Add(renderTTL)
 	link := fmt.Sprintf("%s/print/%s?token=%s", h.appURL, url.PathEscape(c.ResumeID), url.QueryEscape(h.tokens.sign(c)))
 	out, err := h.pdf.Render(r.Context(), link)
@@ -124,6 +124,9 @@ func (h *Handler) writePDF(w http.ResponseWriter, r *http.Request, c renderClaim
 		h.log.Error("pdf render failed", "resume", c.ResumeID, "err", err)
 		httpx.WriteError(w, http.StatusBadGateway, "pdf_failed", "Couldn't create the PDF. Try again.")
 		return
+	}
+	if _, err := h.db.Exec(r.Context(), `insert into download_events (resume_id, kind) values ($1, $2)`, c.ResumeID, kind); err != nil {
+		h.log.Error("record download failed", "resume", c.ResumeID, "err", err)
 	}
 	w.Header().Set("Content-Type", "application/pdf")
 	w.Header().Set("Content-Disposition", `attachment; filename="resume.pdf"`)

@@ -22,6 +22,8 @@ type Config struct {
 	AIProvider       string
 	OpenRouterKey    string
 	OpenRouterModels []string
+	// AdminCode gates /api/admin/stats. Empty disables the endpoint.
+	AdminCode string
 }
 
 func Load() (Config, error) {
@@ -49,6 +51,7 @@ func Load() (Config, error) {
 	c.EmailFrom = os.Getenv("EMAIL_FROM")
 	// RESUME_PARSER_PROVIDER is the old name, still read so existing env files keep working.
 	c.AIProvider = envOr("AI_PROVIDER", envOr("RESUME_PARSER_PROVIDER", "none"))
+	c.AdminCode = os.Getenv("ADMIN_CODE")
 	c.OpenRouterKey = os.Getenv("OPENROUTER_API_KEY")
 	for _, m := range strings.Split(os.Getenv("OPENROUTER_MODELS"), ",") {
 		if m = strings.TrimSpace(m); m != "" {

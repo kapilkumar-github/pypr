@@ -12,13 +12,13 @@ export class ApiError extends Error {
 type Method = "GET" | "POST" | "PUT" | "DELETE"
 
 /** Browser-side JSON client for the same-origin `/api` proxy. */
-export async function api<T>(path: string, method: Method = "GET", body?: unknown): Promise<T> {
+export async function api<T>(path: string, method: Method = "GET", body?: unknown, headers?: Record<string, string>): Promise<T> {
   const mutating = method !== "GET"
   const res = await fetch(`/api${path}`, {
     method,
     credentials: "same-origin",
     // The API requires JSON on every mutating request (CSRF guard), even when there is no payload.
-    headers: mutating ? { "Content-Type": "application/json" } : undefined,
+    headers: mutating ? { "Content-Type": "application/json", ...headers } : headers,
     body: mutating ? JSON.stringify(body ?? {}) : undefined,
   })
   if (res.status === 204) return undefined as T
