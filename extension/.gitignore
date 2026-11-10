@@ -3,3 +3,4 @@ node_modules
 .wxt
 .env.local
 *.zip
+.output-sideload

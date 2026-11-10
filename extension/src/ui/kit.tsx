@@ -1,3 +1,4 @@
+import markUrl from "../../public/icon/48.png?inline"
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react"
 
 const cx = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(" ")
@@ -64,9 +65,5 @@ export function Toggle({ checked, onChange, label }: { checked: boolean; onChang
   )
 }
 
-export const PyprMark = ({ size = 20 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" fill="none">
-    <rect width="24" height="24" rx="6" fill="currentColor" opacity="0.18" />
-    <path d="M8 18V6h5a3.5 3.5 0 0 1 0 7H8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-)
+// The same mark as the web app's icon, inlined so it loads inside a page's shadow root without exposing a resource.
+export const PyprMark = ({ size = 20 }: { size?: number }) => <img src={markUrl} width={size} height={size} alt="" aria-hidden="true" draggable={false} />

@@ -4,6 +4,10 @@ import { readFileSync } from "node:fs"
 
 const { key } = JSON.parse(readFileSync(new URL("./key.json", import.meta.url), "utf8")) as { key: string }
 
+// The Chrome Web Store rejects a manifest "key" (it assigns its own ID). The key stays for dev builds and for the
+// sideload ZIP (PYPR_KEY=1), so unpacked installs keep the ID the API allows.
+const withKey = (mode: string) => mode === "development" || process.env.PYPR_KEY === "1"
+
 // Build-time endpoints. `wxt` (dev) talks to a local API; `wxt build` talks to production. Override with VITE_PYPR_API.
 const api_ = (mode: string) => process.env.VITE_PYPR_API ?? (mode === "development" ? "http://localhost:8090" : "https://api.pypr.work")
 
@@ -27,7 +31,7 @@ export default defineConfig({
     name: "Pypr job capture",
     description: "Save jobs from any careers page to your Pypr job tracker. You show it where the details are; it remembers.",
     version: "0.1.0",
-    key,
+    ...(withKey(mode) ? { key } : {}),
     permissions: ["activeTab", "scripting", "storage", "contextMenus", "identity"],
     // Only the Pypr API. Pages are reached through activeTab or a site the user enables.
     host_permissions: [`${new URL(api_(mode)).origin}/*`],

@@ -34,20 +34,21 @@ All inside `extension/`.
 | Unit tests | `pnpm test` |
 | Everything | `pnpm verify` |
 | Production build (`.env.production`: `api.pypr.work`, `www.pypr.work`) | `pnpm build` -> `.output/chrome-mv3` |
-| Distributable ZIP | `pnpm zip` -> `.output/pypr-extension-<version>-chrome.zip` |
+| ZIP for the Chrome Web Store (no manifest `key`) | `pnpm zip` -> `.output/pypr-extension-<version>-chrome.zip` |
+| ZIP for sideloading (pinned `key`, fixed ID) | `pnpm zip:sideload` -> `.output-sideload/pypr-extension-<version>-chrome.zip` |
 
 ## Load unpacked
 
 1. `pnpm build` (or `pnpm dev`).
 2. Open `chrome://extensions`, turn on *Developer mode*, click *Load unpacked*, choose `extension/.output/chrome-mv3` (dev: `.output/chrome-mv3-dev`).
-3. The extension ID is fixed by the `key` in the manifest, so it is `ecfmagaellmkoicfndnhimjbjnlacfae` on every machine.
+3. Dev builds and the sideload ZIP carry a `key` in the manifest, so the ID is `ecfmagaellmkoicfndnhimjbjnlacfae` on every machine. The store ZIP has no `key` (the Web Store rejects one), so an unpacked copy of it gets a random ID that the API will refuse.
 
 ## Connecting an account
 
 No passwords or tokens are typed into the extension. *Connect* opens the Pypr site through `chrome.identity.launchWebAuthFlow` (PKCE, redirect `https://<id>.chromiumapp.org/pypr`). You approve on `/extension/connect` while signed in to Pypr; the extension trades the one-time code for a session token kept in `chrome.storage.local` (trusted contexts only). The code is single use and expires quickly.
 
 - **Local:** run the dev DB, API (`:8090`) and web (`:3000`). In `backend/.env` set `EXTENSION_IDS=ecfmagaellmkoicfndnhimjbjnlacfae`. Load the dev build.
-- **Production:** set `EXTENSION_IDS` on the API host to the ID of the build you ship, then deploy the API and web. A ZIP built from this repo keeps the pinned ID. A Chrome Web Store listing gets its own ID unless the store is given the same key; add that ID to `EXTENSION_IDS` as well.
+- **Production:** set `EXTENSION_IDS` on the API host to the ID of the build you ship, then deploy the API and web. The sideload ZIP uses the pinned ID. A Chrome Web Store listing gets its own ID; add it to `EXTENSION_IDS` (comma separated) as well.
 
 ## Permissions
 

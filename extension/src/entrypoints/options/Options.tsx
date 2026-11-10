@@ -39,7 +39,7 @@ function Main() {
   return (
     <main className="mx-auto max-w-3xl space-y-8 p-6">
       <header className="flex items-center gap-3">
-        <span className="text-primary"><PyprMark size={32} /></span>
+        <PyprMark size={32} />
         <div>
           <h1 className="text-xl font-semibold">Pypr job capture</h1>
           <p className="text-sm text-muted-foreground">Sites, mappings and your account connection. Everything here stays in this browser.</p>

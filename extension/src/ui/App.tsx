@@ -51,9 +51,9 @@ export function App() {
           aria-label="Open Pypr job capture"
           title="Save this job to Pypr"
           onClick={show}
-          style={{ pointerEvents: "auto", position: "fixed", right: 16, bottom: 24, width: 44, height: 44, borderRadius: 22, border: "none", cursor: "pointer", background: "var(--primary)", color: "var(--primary-foreground)", display: "grid", placeItems: "center" }}
+          style={{ pointerEvents: "auto", position: "fixed", right: 16, bottom: 24, width: 44, height: 44, border: "none", padding: 0, cursor: "pointer", background: "transparent", display: "grid", placeItems: "center" }}
         >
-          <PyprMark size={26} />
+          <PyprMark size={44} />
         </button>
       )}
 
@@ -78,7 +78,7 @@ export function App() {
           style={{ pointerEvents: "auto", position: "fixed", top: 0, right: 0, height: "100vh", width: "min(420px, 100vw)", background: "var(--background)", borderLeft: "1px solid var(--border)", display: "flex", flexDirection: "column" }}
         >
           <header className="flex items-center gap-2 border-b border-border px-3 py-2.5">
-            <span className="text-primary"><PyprMark size={22} /></span>
+            <PyprMark size={24} />
             <div className="min-w-0 flex-1">
               <h2 className="text-base leading-tight font-semibold">Pypr</h2>
               <p className="truncate text-xs text-muted-foreground">
