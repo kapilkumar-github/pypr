@@ -278,12 +278,22 @@ export default function LandingPage() {
         </section>
       </main>
 
+      {process.env.NODE_ENV !== "production" && (
+        <section className="border-t bg-muted/40 py-4 text-sm">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-6">
+            <span className="font-semibold">Dev only: Chrome extension</span>
+            <a className="underline" href="/dev-downloads/extension/sideload" download>Sideload ZIP (fixed ID, load unpacked)</a>
+            <a className="underline" href="/dev-downloads/extension/store" download>Web Store ZIP</a>
+          </div>
+        </section>
+      )}
       <footer className="border-t py-10">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 sm:flex-row lg:px-12">
           <Logo size="sm" />
           <div className="flex flex-col items-center gap-1 sm:items-end">
             <span className="text-xs text-muted-foreground">© pypr. Career tools for job seekers.</span>
             <BuiltBy />
+            <Link href="/privacy" className="text-xs text-muted-foreground hover:text-foreground">Privacy policy</Link>
           </div>
         </div>
       </footer>
