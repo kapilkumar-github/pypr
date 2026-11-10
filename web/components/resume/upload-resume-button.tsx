@@ -8,14 +8,21 @@ import { toast } from "sonner"
 import { useVerified, verifyFirst } from "@/components/app/verify-email"
 import { Button } from "@/components/ui/button"
 import { errorMessage, fieldErrors } from "@/lib/api/client"
-import { parseResumeFile, UPLOAD_ACCEPT, useCreateResume } from "@/lib/api/resumes"
+import { parseResumeFile, UPLOAD_ACCEPT, useCreateResume, type Resume } from "@/lib/api/resumes"
 import { resumeFromParsed } from "@/lib/resume/import"
 
 /**
  * Upload a PDF, Word or text resume: the API extracts it with AI, we create a resume from the
- * result and open it in the builder for review.
+ * result and open it in the builder for review (or hand it to `onImported`).
  */
-export function UploadResumeButton({ variant = "outline" }: { variant?: "outline" | "default" }) {
+export function UploadResumeButton({
+  variant = "outline",
+  onImported,
+}: {
+  variant?: "outline" | "default"
+  /** Called with the new resume instead of opening it in the builder. */
+  onImported?: (resume: Resume) => void
+}) {
   const router = useRouter()
   const input = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
@@ -29,8 +36,11 @@ export function UploadResumeButton({ variant = "outline" }: { variant?: "outline
     try {
       const parsed = await parseResumeFile(file)
       const resume = await create.mutateAsync(resumeFromParsed(parsed, file.name))
-      toast.success("Resume imported. Check the details before you send it.", { id: toastId, description: undefined })
-      router.push(`/resumes/${resume.id}`)
+      toast.success(onImported ? "Resume imported." : "Resume imported. Check the details before you send it.", { id: toastId, description: undefined })
+      if (onImported) {
+        onImported(resume)
+        setBusy(false)
+      } else router.push(`/resumes/${resume.id}`)
     } catch (err) {
       const message = fieldErrors(err).file ?? errorMessage(err) ?? "Couldn't import that file."
       toast.error(message, { id: toastId, description: undefined })

@@ -1,0 +1,39 @@
+# NOT USED. The app runs Node.js/TypeScript with its own Docker runner (backend/internal/runner) instead.
+# Kept only so the Judge0 stack can be brought back if more languages are needed; the Go client was removed.
+# Self-hosted Judge0 CE: runs learners' code for the coding playground (Python, Java, Go, C++, Node.js, TypeScript).
+# Needs a host on cgroup v1: check with `docker info --format '{{.CgroupVersion}}'` (must print 1).
+# Setup: cp judge0.conf.example judge0.conf, set AUTHN_TOKEN and the Postgres password, then `docker compose up -d`.
+# The API is published on 127.0.0.1 only. Never expose it: it runs arbitrary code. Set JUDGE0_URL and JUDGE0_TOKEN for the Go API.
+name: pypr-judge0
+
+x-judge0: &judge0
+  image: judge0/judge0:1.13.1
+  env_file: ./judge0.conf
+  restart: unless-stopped
+
+services:
+  server:
+    <<: *judge0
+    command: ["./scripts/server"]
+    ports:
+      - "127.0.0.1:2358:2358"
+    depends_on: [db, redis]
+  worker:
+    <<: *judge0
+    command: ["./scripts/workers"]
+    privileged: true # isolate (the sandbox) needs it
+    depends_on: [db, redis]
+  db:
+    image: postgres:16.2
+    env_file: ./judge0.conf
+    restart: unless-stopped
+    volumes:
+      - judge0-data:/var/lib/postgresql/data
+  redis:
+    image: redis:7.2
+    command: ["bash", "-c", 'docker-entrypoint.sh --appendonly no --requirepass "$$REDIS_PASSWORD"']
+    env_file: ./judge0.conf
+    restart: unless-stopped
+
+volumes:
+  judge0-data:

@@ -9,5 +9,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/resumes/:path*", "/job-match"],
+  matcher: ["/resumes/:path*", "/job-match", "/job-tracker/:path*", "/workspaces/:path*", "/take/:path*", "/code/:workspace/:problem", "/machine/:workspace/:session", "/design/:workspace/:board"],
 }

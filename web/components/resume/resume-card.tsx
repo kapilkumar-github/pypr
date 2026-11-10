@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Clock, Copy, EllipsisVertical, FilePen, Pencil, Trash2 } from "lucide-react"
+import { Clock, Copy, EllipsisVertical, FilePen, Pencil, Target, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { ResumeThumbnail } from "@/components/resume/document/resume-thumbnail"
@@ -105,6 +105,11 @@ function ActionsMenu({
             <Pencil /> Edit
           </Link>
         </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href={prepareHref(resume)}>
+            <Target /> Prepare for a role
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={onDuplicate}>
           <Copy /> Duplicate
         </DropdownMenuItem>
@@ -129,6 +134,8 @@ function TemplateBadge({ id }: { id: string }) {
 }
 
 const editHref = (r: ResumeSummary) => `/resumes/${r.id}`
+// Opens the workspace form prefilled from this resume; nothing is created until the user confirms.
+const prepareHref = (r: ResumeSummary) => `/workspaces/new?resume=${encodeURIComponent(r.id)}`
 
 /** Resume in the list: a card with a live thumbnail (grid) or a compact row (list). */
 export function ResumeCard({ resume, layout = "grid" }: { resume: ResumeSummary; layout?: ResumeLayout }) {
@@ -194,11 +201,18 @@ export function ResumeCard({ resume, layout = "grid" }: { resume: ResumeSummary;
       </div>
 
       <div className="relative z-10 mt-4 flex items-center justify-between gap-2 border-t pt-3">
-        <Button variant="secondary" size="sm" asChild className="text-primary">
-          <Link href={editHref(resume)}>
-            <FilePen data-icon="inline-start" /> Edit
-          </Link>
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="secondary" size="sm" asChild className="text-primary">
+            <Link href={editHref(resume)}>
+              <FilePen data-icon="inline-start" /> Edit
+            </Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href={prepareHref(resume)}>
+              <Target data-icon="inline-start" /> Prepare for a role
+            </Link>
+          </Button>
+        </div>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

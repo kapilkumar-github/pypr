@@ -15,11 +15,16 @@ import (
 	"pypr/backend/internal/auth"
 	"pypr/backend/internal/config"
 	"pypr/backend/internal/db"
+	"pypr/backend/internal/design"
 	"pypr/backend/internal/email"
 	"pypr/backend/internal/jobmatch"
+	"pypr/backend/internal/machine"
+	"pypr/backend/internal/mcq"
 	"pypr/backend/internal/pdf"
 	"pypr/backend/internal/resumeparse"
+	"pypr/backend/internal/runner"
 	"pypr/backend/internal/server"
+	"pypr/backend/internal/workspace"
 )
 
 func main() {
@@ -71,10 +76,39 @@ func run(log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	planner, err := workspace.NewPlanner(cfg.AIProvider, cfg.OpenRouterKey, cfg.OpenRouterModels)
+	if err != nil {
+		return err
+	}
+
+	tutor, err := mcq.NewGenerator(cfg.AIProvider, cfg.OpenRouterKey, cfg.OpenRouterModels)
+	if err != nil {
+		return err
+	}
+	if err := mcq.Sync(ctx, pool); err != nil {
+		return err
+	}
+
+	reviewer, err := machine.NewReviewer(cfg.AIProvider, cfg.OpenRouterKey, cfg.OpenRouterModels)
+	if err != nil {
+		return err
+	}
+	designAI, err := design.NewEvaluator(cfg.AIProvider, cfg.OpenRouterKey, cfg.OpenRouterModels)
+	if err != nil {
+		return err
+	}
+	var codeRunner runner.Runner // nil keeps the server-side languages off
+	if cfg.CodeRunner == "docker" {
+		d := runner.NewDocker(cfg.CodeRunnerImage)
+		if err := d.Ensure(ctx); err != nil {
+			log.Error("code runner not ready; it will retry on the first run", "err", err)
+		}
+		codeRunner = d
+	}
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           server.New(log, pool, authSvc, renderer, parser, analyzer, cfg.CookieSecure, cfg.AppURL, cfg.AdminCode),
+		Handler:           server.New(log, pool, authSvc, renderer, parser, analyzer, planner, tutor, codeRunner, reviewer, designAI, cfg.CookieSecure, cfg.AppURL, cfg.AdminCode),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

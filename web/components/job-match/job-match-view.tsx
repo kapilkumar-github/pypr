@@ -3,7 +3,7 @@
 import { useDeferredValue, useEffect, useMemo, useState, useSyncExternalStore } from "react"
 import Link from "next/link"
 import { useMutation } from "@tanstack/react-query"
-import { ArrowRight, CircleAlert, CircleCheck, FileText, LoaderCircle, RotateCw, Sparkles } from "lucide-react"
+import { ArrowRight, CircleAlert, CircleCheck, FileText, LoaderCircle, RotateCw, Sparkles, Target } from "lucide-react"
 import { toast } from "sonner"
 
 import { useVerified, verifyFirst } from "@/components/app/verify-email"
@@ -186,6 +186,13 @@ function RequirementsCard({ req }: { req: JobRequirements }) {
       {req.source === "rules" && (
         <p className="text-xs text-muted-foreground">Found with a built-in list of common skills. AI analysis also catches skills it doesn&apos;t know.</p>
       )}
+      <div className="border-t pt-3">
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/workspaces/new?from=job-match">
+            <Target data-icon="inline-start" /> Prepare for this job
+          </Link>
+        </Button>
+      </div>
     </div>
   )
 }

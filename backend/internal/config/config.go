@@ -22,6 +22,9 @@ type Config struct {
 	AIProvider       string
 	OpenRouterKey    string
 	OpenRouterModels []string
+	// CodeRunner runs learners' Node.js and TypeScript in Docker: "docker" or "none" (off).
+	CodeRunner      string
+	CodeRunnerImage string
 	// AdminCode gates /api/admin/stats. Empty disables the endpoint.
 	AdminCode string
 }
@@ -52,6 +55,11 @@ func Load() (Config, error) {
 	// RESUME_PARSER_PROVIDER is the old name, still read so existing env files keep working.
 	c.AIProvider = envOr("AI_PROVIDER", envOr("RESUME_PARSER_PROVIDER", "none"))
 	c.AdminCode = os.Getenv("ADMIN_CODE")
+	c.CodeRunner = envOr("CODE_RUNNER", "none")
+	c.CodeRunnerImage = os.Getenv("CODE_RUNNER_IMAGE")
+	if c.CodeRunner != "docker" && c.CodeRunner != "none" {
+		return c, errors.New("CODE_RUNNER must be docker or none")
+	}
 	c.OpenRouterKey = os.Getenv("OPENROUTER_API_KEY")
 	for _, m := range strings.Split(os.Getenv("OPENROUTER_MODELS"), ",") {
 		if m = strings.TrimSpace(m); m != "" {

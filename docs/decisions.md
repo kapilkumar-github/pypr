@@ -37,6 +37,42 @@
   `@page` rule. Chrome only ever opens `APP_URL`, never a user-supplied URL. Max 3 renders at once,
   20 s timeout, 30 per 10 min per user (or per public address). The builder saves pending edits first.
   "Print" in the document menu still uses the browser print dialog with the same print stylesheet.
+- **D21 Job tracker** (`docs/job-tracker.md`). Applying happens on the employer's site; Pypr only
+  records the user's confirmation, never infers it from an opened link. Confirming copies the chosen
+  resume (title + data, so template and design settings too) into an immutable snapshot in the same
+  transaction as the applied date and status event; later records are labelled "added after applying".
+  Extraction reads schema.org JobPosting JSON-LD, then OpenGraph, with no per-ATS scrapers and no AI;
+  the fetcher checks the dialed IP so redirects and DNS rebinding can't reach private networks.
+  Duplicate checks warn, never block. No reminders are sent (no notification infrastructure yet).
+- **D20 Machine coding is staged and judged cumulatively; HLD is a canvas.** A machine coding problem is one file
+  that grows through 2–3 stages, and stage k runs the tests of stages 1..k, so the exercise tests how an
+  implementation evolves, not just whether a fixed task gets done. Redis stages use an injected in-memory
+  `FakeRedis` prelude (failure injection included) instead of a real Redis, which keeps the runner offline and the tests
+  deterministic. The mode (practice, interview, review) lives in a server-side session so hints, solutions and the clock
+  cannot be bypassed from the browser. The bank is a fixed list of 30 seeds, drafted by the AI and kept only when the
+  reference solutions pass on the runner. System design uses React Flow (MIT) rather than a hand-rolled canvas or an
+  embedded whiteboard; boards are opaque JSON documents that the API only bounds. See `docs/workspaces.md` §6–7.
+- **D19 Code runs in two places.** JavaScript and HTML + CSS run in the learner's browser (instant, no server
+  load). Node.js, TypeScript and DSA run on our own small runner: one warm Docker container, `docker exec` per run
+  (`internal/runner`). Self-hosted Judge0 was built first and removed: it needs cgroup v1 and a privileged worker,
+  ships Node 12 / TypeScript 3.7, and we only need JS and TS. The cost of the own runner: the API needs the Docker
+  socket, so it is dev-only until a safer deployment is chosen. The API, not the browser, scores server problems.
+  See `docs/workspaces.md` section 5.
+- **D18 Multiple-choice tests** (`docs/workspaces.md` §4). A global question bank per topic, generated
+  ahead of time by the `cmd/kbgen` CLI and stored in the DB, so a test never waits on the AI. The topic
+  list is code; "selected" topics are matched from the workspace's role and skills. Tests are timed by the
+  server, answers are saved as chosen, and correct answers are revealed only after submit. A workspace is
+  created from a resume (mandatory); its context is derived from the resume without AI. An earlier
+  rounds-and-lessons knowledge base was dropped before release.
+- **D17 Preparation workspaces** (`docs/workspaces.md`). Plans are user-owned: rules (and AI when
+  configured) only suggest, and nothing is added without the user picking it. One plan per workspace.
+  Activity `kind` (what) is separate from `progress` (`check`, `count`, `checklist`: how it completes);
+  count progress is a row per completion with `(source, source_ref)` unique, so a future module's session
+  counts once. Skill levels belong to the person (`user_skills`, stable slug keys) and are shared by
+  all workspaces; `self_level` is never treated as verified and `demonstrated_level` is reserved for
+  assessments. Optional modules are a validated text array; none is built yet, so the UI marks them
+  "Planned". Context changes keep the previous version in `workspace_context_versions`. Workspace notes
+  are plain text (not rich text) because rules and AI read them.
 - **D16 Job match** (`/job-match`) ranks every resume against a pasted posting. The instant reading
   finds skills from a built-in dictionary with synonyms (`web/lib/resume/skills.ts`) and splits required
   from nice-to-have by the posting's headings. "Analyze with AI" asks the model for the requirements

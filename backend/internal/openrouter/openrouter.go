@@ -31,6 +31,13 @@ func New(key string, models []string) *Client {
 	return &Client{key: key, models: models, http: &http.Client{Timeout: 100 * time.Second}}
 }
 
+// WithTimeout returns a client that waits up to d for a reply. Long generations (whole coding problems) need more than the default.
+func (c *Client) WithTimeout(d time.Duration) *Client {
+	cp := *c
+	cp.http = &http.Client{Timeout: d}
+	return &cp
+}
+
 // Request is one chat call: a system prompt, the user message parts and optional plugins.
 type Request struct {
 	System  string

@@ -3,18 +3,25 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
+  ArrowLeft,
+  Blocks,
   BotMessageSquare,
   FileText,
-  GraduationCap,
+  LayoutDashboard,
+  ListChecks,
+  Network,
   PanelLeftClose,
   PanelLeftOpen,
   ScanSearch,
+  Settings,
   SquareKanban,
+  Target,
   type LucideIcon,
 } from "lucide-react"
 
 import { Logo } from "@/components/brand/logo"
 import { UserMenu } from "@/components/app/user-menu"
+import { useWorkspace } from "@/lib/api/workspaces"
 import {
   Sidebar,
   SidebarContent,
@@ -26,6 +33,9 @@ import {
   SidebarMenu,
   SidebarMenuBadge,
   SidebarMenuButton,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarMenuItem,
   SidebarRail,
   useSidebar,
@@ -34,15 +44,86 @@ import {
 type NavItem = { title: string; href: string; icon: LucideIcon; soon?: boolean }
 
 const nav: NavItem[] = [
+  { title: "Workspaces", href: "/workspaces", icon: Target },
   { title: "Resumes", href: "/resumes", icon: FileText },
   { title: "Job match", href: "/job-match", icon: ScanSearch },
-  { title: "Interview prep", href: "/interview-prep", icon: GraduationCap, soon: true },
   { title: "Mock interview", href: "/mock-interview", icon: BotMessageSquare, soon: true },
-  { title: "Job tracker", href: "/job-tracker", icon: SquareKanban, soon: true },
+  { title: "Job tracker", href: "/job-tracker", icon: SquareKanban },
 ]
+
+const UUID = /^\/workspaces\/([0-9a-f-]{36})(?:\/|$)/i
+
+type WorkspaceItem = { slug: string; title: string; icon: LucideIcon; children?: { slug: string; title: string }[] }
+
+// Children appear only while their parent is the open section. More practice modes get added here.
+const workspaceNav: WorkspaceItem[] = [
+  { slug: "", title: "Overview", icon: LayoutDashboard },
+  { slug: "practice", title: "Practice", icon: ListChecks },
+  { slug: "machine-coding", title: "Machine coding", icon: Blocks },
+  { slug: "design", title: "System design", icon: Network },
+  { slug: "settings", title: "Settings", icon: Settings },
+]
+
+/** Menu for the open workspace, shown under the main navigation. */
+function WorkspaceNav({ id, pathname }: { id: string; pathname: string }) {
+  const workspace = useWorkspace(id)
+  const base = `/workspaces/${id}`
+  return (
+    <SidebarGroup>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="Back to workspaces" className="text-muted-foreground">
+              <Link href="/workspaces">
+                <ArrowLeft />
+                <span>Back</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarGroupContent>
+      <SidebarGroupLabel className="max-w-full truncate">{workspace.data?.name ?? "Workspace"}</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {workspaceNav.map((item) => {
+            const href = item.slug ? `${base}/${item.slug}` : base
+            const active = item.slug ? pathname === href || pathname.startsWith(href + "/") : pathname === base
+            return (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton asChild isActive={active && !item.children} tooltip={item.title}>
+                  <Link href={item.children ? `${href}/${item.children[0]!.slug}` : href}>
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+                {active && item.children && (
+                  <SidebarMenuSub>
+                    {item.children.map((c) => {
+                      const childHref = `${href}/${c.slug}`
+                      return (
+                        <SidebarMenuSubItem key={c.slug}>
+                          <SidebarMenuSubButton asChild isActive={pathname === childHref || pathname.startsWith(childHref + "/")}>
+                            <Link href={childHref}>
+                              <span>{c.title}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      )
+                    })}
+                  </SidebarMenuSub>
+                )}
+              </SidebarMenuItem>
+            )
+          })}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  )
+}
 
 export function AppSidebar() {
   const pathname = usePathname()
+  const workspaceId = UUID.exec(pathname)?.[1]
 
   return (
     <Sidebar collapsible="icon">
@@ -50,6 +131,9 @@ export function AppSidebar() {
         <Logo href="/resumes" collapsible className="self-start" />
       </SidebarHeader>
       <SidebarContent>
+        {workspaceId ? (
+          <WorkspaceNav id={workspaceId} pathname={pathname} />
+        ) : (
         <SidebarGroup>
           <SidebarGroupLabel>Workspace</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -75,6 +159,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        )}
       </SidebarContent>
       <SidebarFooter>
         <UserMenu />

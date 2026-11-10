@@ -31,6 +31,8 @@ calling `GET /api/auth/me` with the cookie (`web/lib/server/session.ts`).
 | `internal/jobmatch` | `Analyzer` port: reads a job posting's requirements; `openrouter` adapter; `Fake` for tests; handlers |
 | `internal/resumeparse` | `Parser` port for resume upload; `openrouter` adapter (free LLMs, PDF text plugin, DOCX text in Go); `Fake` for tests |
 | `internal/resume` | Resume CRUD scoped to the current user; data stored as opaque JSON |
+| `internal/tracker` | Job tracker: tracked jobs, status history, resume snapshots, notes, interviews, next action, duplicate checks, SSRF-safe job page extraction (see `docs/job-tracker.md`) |
+| `internal/workspace` | Preparation workspaces: context, linked resumes, shared skill levels, plan activities and progress, rule-based suggestions, `Planner` AI port (see `docs/workspaces.md`) |
 | `internal/pdf` | `Renderer` port; `chrome` adapter (chromedp, local headless Chrome); `Fake` for tests |
 | `internal/httpx` | JSON helpers, JSON-only guard for mutations (CSRF), logging/recover, rate limiter |
 | `internal/server` | Route table |
@@ -43,6 +45,7 @@ API: `POST /api/auth/{signup,login,logout,forgot-password,reset-password,verify-
 `GET|PUT /api/resumes/{id}/sharing`, public (no auth) `GET /api/public/resumes/{slug}` (counts a view, strips contact details
 when hidden), PDF downloads `POST /api/resumes/{id}/pdf` and `POST /api/public/resumes/{slug}/pdf` (counts a
 download), token-only `GET /api/render/resumes/{id}` for the print page, `GET /api/health`.
+Workspaces: see the API table in `docs/workspaces.md`. Job tracker: see `docs/job-tracker.md`.
 
 Version history: the first save of an editing session (30 min gap) snapshots the previous state. Autosaves are kept
 90 days, at most 50 per resume; named versions stay until deleted. Restoring saves the current state first.
@@ -62,7 +65,12 @@ All tables live in the `app` Postgres schema. Other schemas in the database are 
 | `app/r/[slug]` | Public resume page (no auth; `noindex` unless the owner allows search engines) |
 | `app/design-system` | Living reference for `design.md` |
 | `proxy.ts` | Cookie-presence redirect for `/resumes/*` (fast path only) |
-| `lib/api/*` | Fetch client, auth calls, resume query/mutation hooks |
+| `lib/api/*` | Fetch client, auth calls, resume and workspace query/mutation hooks |
+| `app/(app)/(shell)/workspaces` | Workspace list, create form (`?resume=`, `?from=job-match`), `[id]` overview / plan / tests / knowledge / settings |
+| `components/workspace` | Workspace frame (switcher, tabs), form, dashboard, plan editor, suggestions review, knowledge |
+| `app/(app)/(shell)/job-tracker` | Job tracker board/table, add job, `[id]` job detail |
+| `components/tracker`, `lib/tracker/meta.ts` | Job tracker UI, labels, due states, time-zone helpers |
+| `lib/workspace/meta.ts` | Labels, module list, resume prefill, next-activity ranking, plan completion |
 | `lib/resume/*` | Resume data model and section registry, defaults/normalization, formatting, exports (text, Markdown, Word), ATS checks and job match, print |
 | `lib/server/public-resume.ts` | Server fetch of a public resume (memoized per request) |
 | `components/resume/document` | Paper, templates (Modern, Classic, Minimal, Executive, Sidebar, Split), section renderer, safe rich-text renderer |
@@ -82,9 +90,12 @@ All tables live in the `app` Postgres schema. Other schemas in the database are 
 | B4 | Download formats (PDF, Word, Markdown, text, JSON) and version history | done |
 | B5 | Check: rule-based ATS checks, job keyword match, parser view | done |
 | B6 | Share: public page, address, privacy options, view/download counts | done |
+| W1 | Preparation workspaces: create (blank, from a resume, from Job match), context, user-owned plans with check/count/checklist progress, self-assessed knowledge, suggestions (rules, optional AI) | done |
+| P1 | Practice, phase 1: MCQ tests with tutor chat (37 topics incl. system design and Node.js), coding playground for DSA (JavaScript / TypeScript), Node.js, TypeScript, JavaScript and HTML + CSS, topic cards with a side drawer | done in dev (code runner not enabled in prod) |
+| P2 | Machine coding: 30 staged problems (utilities, backend components, applications) with Practice / Interview / Review modes and AI review; System design: canvas boards with shapes and system components, design prompts | done in dev (machine coding needs the code runner) |
+| J1 | Job tracker: add by link (JSON-LD extraction) or by hand, duplicate warnings, board/table, status history, apply confirmation with resume snapshot, notes, interviews, next action | done |
 
-Next candidates: persona model + interview prep content (Software Engineer first), AI mock interview,
-job tracker.
+Next candidates: AI mock interview (records sessions with `workspace.RecordCompletion`), system design practice (written/spoken answers), Q&A.
 
 ## Running locally
 
