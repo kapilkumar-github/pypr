@@ -214,13 +214,13 @@ func createJob(ctx context.Context, tx pgx.Tx, userID string, in JobInput) (stri
 	err := tx.QueryRow(ctx,
 		`insert into tracked_jobs (user_id, company, title, location, work_arrangement, employment_type, discovery_url,
 		   application_url, portal_url, application_ref, source, external_id, description, salary_min, salary_max,
-		   salary_currency, salary_period, status, resume_id, url_keys, match_key)
-		 values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+		   salary_currency, salary_period, status, resume_id, url_keys, match_key, client_key)
+		 values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
 		 returning id`,
 		userID, in.Company, in.Title, in.Location, in.WorkArrangement, in.EmploymentType, in.DiscoveryURL,
 		in.ApplicationURL, in.PortalURL, in.ApplicationRef, in.Source, in.ExternalID, in.Description, in.SalaryMin,
 		in.SalaryMax, in.SalaryCurrency, in.SalaryPeriod, in.Status, in.ResumeID,
-		urlKeys(in.DiscoveryURL, in.ApplicationURL), matchKey(in.Company, in.Title)).Scan(&id)
+		urlKeys(in.DiscoveryURL, in.ApplicationURL), matchKey(in.Company, in.Title), in.ClientKey).Scan(&id)
 	if err != nil {
 		return "", err
 	}

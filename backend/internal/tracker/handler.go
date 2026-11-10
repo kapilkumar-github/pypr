@@ -5,12 +5,14 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"pypr/backend/internal/auth"
@@ -175,16 +177,47 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteValidation(w, map[string]string{"appliedAt": "Save the job first, then confirm the application."})
 		return
 	}
+	if key := r.Header.Get("Idempotency-Key"); key != "" {
+		if !idempotencyKeyRe.MatchString(key) {
+			httpx.WriteValidation(w, map[string]string{"idempotencyKey": "Use 8 to 100 letters, digits, - or _."})
+			return
+		}
+		in.ClientKey = key
+		// A retry of a save that already went through returns that job.
+		if id, err := h.jobByKey(r.Context(), userID(r), key); err == nil {
+			h.writeDetail(w, r, id, http.StatusOK)
+			return
+		} else if !errors.Is(err, pgx.ErrNoRows) {
+			h.failed(w, err)
+			return
+		}
+	}
 	var id string
 	err := pgx.BeginFunc(r.Context(), h.db, func(tx pgx.Tx) error {
 		var err error
 		id, err = createJob(r.Context(), tx, userID(r), in)
 		return err
 	})
+	var pgErr *pgconn.PgError
+	if in.ClientKey != "" && errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		// Two requests with the same key raced; the other one won.
+		if id, err = h.jobByKey(r.Context(), userID(r), in.ClientKey); err == nil {
+			h.writeDetail(w, r, id, http.StatusOK)
+			return
+		}
+	}
 	if h.failed(w, err) {
 		return
 	}
 	h.writeDetail(w, r, id, http.StatusCreated)
+}
+
+var idempotencyKeyRe = regexp.MustCompile(`^[A-Za-z0-9_-]{8,100}$`)
+
+func (h *Handler) jobByKey(ctx context.Context, user, key string) (string, error) {
+	var id string
+	err := h.db.QueryRow(ctx, `select id from tracked_jobs where user_id = $1 and client_key = $2`, user, key).Scan(&id)
+	return id, err
 }
 
 func (h *Handler) update(w http.ResponseWriter, r *http.Request) {

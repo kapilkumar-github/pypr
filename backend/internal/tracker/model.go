@@ -134,6 +134,8 @@ type JobInput struct {
 	Note string `json:"note,omitempty"`
 	// Create only: initial status (saved or preparing).
 	Status string `json:"status,omitempty"`
+	// Create only: the Idempotency-Key header, so a retried save returns the job it already made.
+	ClientKey string `json:"-"`
 }
 
 func (in *JobInput) validate() map[string]string {

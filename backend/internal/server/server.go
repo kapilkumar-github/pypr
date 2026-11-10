@@ -22,7 +22,7 @@ import (
 	"pypr/backend/internal/workspace"
 )
 
-func New(log *slog.Logger, db *pgxpool.Pool, authSvc *auth.Service, renderer pdf.Renderer, parser resumeparse.Parser, analyzer jobmatch.Analyzer, planner workspace.Planner, tutor mcq.Generator, codeRunner runner.Runner, reviewer machine.Reviewer, designAI design.Evaluator, cookieSecure bool, appURL, adminCode string) http.Handler {
+func New(log *slog.Logger, db *pgxpool.Pool, authSvc *auth.Service, renderer pdf.Renderer, parser resumeparse.Parser, analyzer jobmatch.Analyzer, planner workspace.Planner, tutor mcq.Generator, codeRunner runner.Runner, reviewer machine.Reviewer, designAI design.Evaluator, cookieSecure bool, appURL, adminCode string, extensionIDs []string) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		if err := db.Ping(r.Context()); err != nil {
@@ -34,6 +34,7 @@ func New(log *slog.Logger, db *pgxpool.Pool, authSvc *auth.Service, renderer pdf
 
 	authHandler := auth.NewHandler(authSvc, log, cookieSecure)
 	authHandler.Register(mux)
+	auth.NewExt(db, log, extensionIDs).Register(mux, authHandler)
 	resume.NewHandler(db, log, renderer, parser, appURL).Register(mux, authHandler.RequireUser, authHandler.RequireVerified)
 	jobmatch.NewHandler(analyzer, log).Register(mux, authHandler.RequireVerified)
 	workspace.NewHandler(db, log, planner).Register(mux, authHandler.RequireUser, authHandler.RequireVerified)

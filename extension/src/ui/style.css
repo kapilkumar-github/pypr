@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+/* Pypr tokens (same family as the web app), sized in px so a host page's root font-size can't distort the panel. */
+@theme {
+  --spacing: 4px;
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 18px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+}
+
+:root,
+:host {
+  --background: oklch(0.99 0.003 247.9);
+  --foreground: oklch(0.208 0.042 265.755);
+  --card: oklch(1 0 0);
+  --muted: oklch(0.968 0.007 247.896);
+  --muted-foreground: oklch(0.5 0.046 257.417);
+  --border: oklch(0.915 0.013 255.508);
+  --input: oklch(0.869 0.022 252.894);
+  --primary: oklch(0.511 0.262 277);
+  --primary-foreground: oklch(1 0 0);
+  --accent: oklch(0.962 0.018 277);
+  --accent-foreground: oklch(0.456 0.262 277);
+  --destructive: oklch(0.586 0.253 17.585);
+  --success: oklch(0.596 0.145 163.225);
+  --warning: oklch(0.666 0.179 58.318);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root,
+  :host {
+    --background: oklch(0.2 0.03 265);
+    --foreground: oklch(0.96 0.01 255);
+    --card: oklch(0.24 0.035 265);
+    --muted: oklch(0.28 0.035 265);
+    --muted-foreground: oklch(0.72 0.03 257);
+    --border: oklch(0.34 0.035 265);
+    --input: oklch(0.4 0.035 265);
+    --primary: oklch(0.66 0.2 277);
+    --primary-foreground: oklch(0.15 0.03 265);
+    --accent: oklch(0.3 0.06 277);
+    --accent-foreground: oklch(0.85 0.1 277);
+    --destructive: oklch(0.7 0.19 17);
+    --success: oklch(0.72 0.15 163);
+    --warning: oklch(0.78 0.15 70);
+  }
+}
+
+/* Tailwind v4 declares these with @property, which a shadow root ignores; give them their initial values here. */
+:host {
+  --tw-border-style: solid;
+  --tw-font-weight: initial;
+  --tw-leading: initial;
+  --tw-tracking: initial;
+  --tw-space-x-reverse: 0;
+  --tw-space-y-reverse: 0;
+  --tw-divide-y-reverse: 0;
+  --tw-outline-style: solid;
+  --tw-shadow: 0 0 #0000;
+  --tw-inset-shadow: 0 0 #0000;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-inset-ring-shadow: 0 0 #0000;
+  --tw-ring-offset-shadow: 0 0 #0000;
+  --tw-ring-offset-width: 0px;
+  --tw-ring-offset-color: #fff;
+  --tw-translate-x: 0;
+  --tw-translate-y: 0;
+  --tw-rotate: 0;
+}
+
+.pp-root {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  text-align: left;
+}
+.pp-root *,
+.pp-root *::before,
+.pp-root *::after {
+  box-sizing: border-box;
+}
+.pp-panel {
+  box-shadow: -8px 0 32px rgba(15, 23, 42, 0.22);
+}
+.pp-fab {
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.3);
+}
+.pp-focus:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.pp-scroll {
+  scrollbar-width: thin;
+}
+@keyframes pp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.pp-spin {
+  animation: pp-spin 0.8s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pp-spin {
+    animation-duration: 2s;
+  }
+}

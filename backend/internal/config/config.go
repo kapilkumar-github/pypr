@@ -27,6 +27,8 @@ type Config struct {
 	CodeRunnerImage string
 	// AdminCode gates /api/admin/stats. Empty disables the endpoint.
 	AdminCode string
+	// ExtensionIDs are the browser extension IDs allowed to connect to an account (EXTENSION_IDS, comma separated).
+	ExtensionIDs []string
 }
 
 func Load() (Config, error) {
@@ -59,6 +61,11 @@ func Load() (Config, error) {
 	c.CodeRunnerImage = os.Getenv("CODE_RUNNER_IMAGE")
 	if c.CodeRunner != "docker" && c.CodeRunner != "none" {
 		return c, errors.New("CODE_RUNNER must be docker or none")
+	}
+	for _, id := range strings.Split(os.Getenv("EXTENSION_IDS"), ",") {
+		if id = strings.TrimSpace(id); id != "" {
+			c.ExtensionIDs = append(c.ExtensionIDs, id)
+		}
 	}
 	c.OpenRouterKey = os.Getenv("OPENROUTER_API_KEY")
 	for _, m := range strings.Split(os.Getenv("OPENROUTER_MODELS"), ",") {

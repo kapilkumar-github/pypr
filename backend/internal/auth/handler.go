@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"pypr/backend/internal/httpx"
@@ -53,14 +54,16 @@ func UserFrom(ctx context.Context) User {
 
 func (h *Handler) RequireUser(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c, err := r.Cookie(CookieName)
-		if err != nil {
+		token, bearer := sessionToken(r)
+		if token == "" {
 			httpx.WriteError(w, http.StatusUnauthorized, "unauthenticated", "Please log in.")
 			return
 		}
-		u, err := h.svc.Authenticate(r.Context(), c.Value)
+		u, err := h.svc.Authenticate(r.Context(), token)
 		if errors.Is(err, ErrNotFound) {
-			h.clearCookie(w)
+			if !bearer {
+				h.clearCookie(w)
+			}
 			httpx.WriteError(w, http.StatusUnauthorized, "unauthenticated", "Please log in.")
 			return
 		}
@@ -70,6 +73,22 @@ func (h *Handler) RequireUser(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, u)))
 	})
+}
+
+// sessionToken reads the session from an "Authorization: Bearer" header (the browser extension) or the cookie.
+// A bearer header, when present, wins and is never mixed with the cookie.
+func sessionToken(r *http.Request) (token string, bearer bool) {
+	if h := r.Header.Get("Authorization"); h != "" {
+		t, ok := strings.CutPrefix(h, "Bearer ")
+		if !ok {
+			return "", true
+		}
+		return strings.TrimSpace(t), true
+	}
+	if c, err := r.Cookie(CookieName); err == nil {
+		return c.Value, false
+	}
+	return "", false
 }
 
 func (h *Handler) signup(w http.ResponseWriter, r *http.Request) {
@@ -103,9 +122,13 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
-	if c, err := r.Cookie(CookieName); err == nil {
-		if err := h.svc.Logout(r.Context(), c.Value); err != nil {
+	if token, bearer := sessionToken(r); token != "" {
+		if err := h.svc.Logout(r.Context(), token); err != nil {
 			httpx.Internal(w, h.log, err)
+			return
+		}
+		if bearer {
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 	}

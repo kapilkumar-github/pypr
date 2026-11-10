@@ -49,6 +49,7 @@ func newEnv(t *testing.T) *env {
 	mux := http.NewServeMux()
 	ah := auth.NewHandler(svc, log, false)
 	ah.Register(mux)
+	auth.NewExt(pool, log, []string{extID}).Register(mux, ah)
 	NewHandler(pool, log, NewFetcher(nil)).Register(mux, ah.RequireUser, ah.RequireVerified)
 	srv := httptest.NewServer(httpx.RequireJSON(mux))
 	t.Cleanup(srv.Close)
